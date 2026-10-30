@@ -754,8 +754,8 @@ plus this testbed's additions:
   `mac_sched_slot_report` buckets every slot per UE, and the xApp of the same name writes it to
   VictoriaMetrics.
 - **Example** — `dl_sdu_count`, telemetry on `rlc_dl_new_sdu` with the `jrtc_apps/dl_sdu_count` xApp.
-  The website's [Hooks and Codelets](https://edgeric.github.io/open-ai-ran-tutorial/hooks-and-codelets.html)
-  page walks through it and the `bufcap` control codelet.
+  The website's [Hooks, Codelets and muApps](https://edgeric.github.io/open-ai-ran-tutorial/hooks-and-codelets.html)
+  page walks through it, the `bufcap` control codelet and writing a scheduler muApp.
 
 The control hooks, including EdgeRIC-RT's two slot hooks, are added to the OCUDU RAN (`ocudu-jbpf`
 submodule); the telemetry hooks are the upstream jbpf set, likewise ported.

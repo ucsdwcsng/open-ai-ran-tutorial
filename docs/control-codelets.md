@@ -9,9 +9,9 @@ codelet may attach to a given control hook at a time.
 
 | Hook | Actuates | Fires | Codelets |
 |---|---|---|---|
-| `rlc_dl_ctrl` | DL RLC queue byte / SDU limit, per `(UE, DRB)` | per DL packet on the bearer | `bufctl`, `bufcap`, `bufdyn_ctl` |
+| `rlc_dl_ctrl` | DL RLC queue byte / SDU limit, per `(UE, DRB)` | per DL packet on the bearer | `bufctl`, `bufcap` |
 | `mac_sched_dl_ctrl` | per-UE DL PRB-share cap | per UE, per slot, at the PRB-grant point | `dl_sched` (`edgeric_sched`) |
-| `mac_sched_dl_mcs_ctrl` | per-UE DL MCS | per newTx UE, at link adaptation | `dl_mcs` (`edgeric_mcs`), `badchan` |
+| `mac_sched_dl_mcs_ctrl` | per-UE DL MCS | per newTx UE, at link adaptation | `dl_mcs` (`edgeric_mcs`) |
 | `pdcp_dl_sdu_segment` | ECN bits of the DL IP packet, in place | per DL DRB SDU segment | `l4span_mark` |
 
 Hook declarations live in `ocudu-jbpf/srsran_jbpf/verifier/specs/jbpf_srsran_hooks.h`; the
@@ -54,13 +54,12 @@ Two details matter. Writing `0` means *leave unchanged*, so a codelet can set a 
 without touching the SDU limit. And `cfg_*` carries the originally configured sizes — writing
 those back is the only way to undo a cap (see the gotcha below).
 
-### Three codelets, three styles
+### Two codelets, two styles
 
 | Codelet | Style | Driven by |
 |---|---|---|
 | `bufctl` | interactive / xApp-commanded, per `(UE, DRB)` | `jrtc-apps/jrtc_apps/bufctl/bufctl_cli.py` |
 | `bufcap` | one fixed cap per object (`bufcap_256k.o`, …), cell-wide | `buffer-control-experiments/bufcap.sh` |
-| `bufdyn_ctl` | dynamic: cap = µ(MCS) × target window | loaded as `dyn` by `bufcap.sh`; observes via `bufdyn_obs` on `mac_sched_harq_dl` |
 
 ### Driving it
 
@@ -258,8 +257,7 @@ index assignment — the two halves will silently act on different UEs. Nothing 
 
 **One codelet per hook.** The exclusivity is per hook, so the practical conflicts are:
 
-- `rlc_dl_ctrl` — `bufctl` vs `bufcap` vs `bufdyn_ctl`
-- `mac_sched_dl_mcs_ctrl` — `dl_mcs` vs `badchan`
+- `rlc_dl_ctrl` — `bufctl` vs `bufcap`
 
 Loading a second codelet on an occupied hook fails. If a `bufcap` cap is still loaded,
 `bash buffer-control-experiments/bufcap.sh off` clears it before you start `bufctl_cli.py`.

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Create (or replace) the Grafana dashboard for experiment A.
+"""Create (or replace) the Grafana dashboard for Demo 3.
 
     python3 buffer-control-experiments/make_dashboard.py
-    -> http://localhost:30490/d/expA-bufcap
+    -> http://localhost:30490/d/demo3-bufcap
 
 Panels, top to bottom:
   now:        video-call RTT · download throughput · cap in force
@@ -68,12 +68,9 @@ panels = [
          "TCP RTT of the 2 Mbit/s paced video flow. Above ~150 ms a call feels laggy."),
     stat("Download throughput now", 8, 'avg_over_time(flow_tput_mbps{flow="bulk"}[3s])', "Mbits",
          [{"color": "#2a78d6", "value": None}], decimals=1),
-    stat("Buffer cap in force", 16, 'last_over_time(bufcap_limit_kb[24h]) * 1024', "bytes",
+    stat("Buffer cap in force", 16, '(max(last_over_time(bufcap_limit_kb[24h])) or vector(6028)) * 1024', "bytes",
          [{"color": "#52514e", "value": None}],
-         "Set by bufcap.sh. No cap = the gNB's configured RLC queue (OCUDU default 6172672 bytes).", w=4),
-    stat("Channel: DL MCS ceiling", 20, 'last_over_time(badchan_mcs_cap[24h]) or vector(28)', "none",
-         [{"color": "red", "value": None}, {"color": "#eda100", "value": 11}, {"color": "green", "value": 28}],
-         "28 = normal channel; lower = an MCS ceiling is in force.", w=4),
+         "Set by bufcap.sh. No cap = the gNB's configured RLC queue (OCUDU default 6172672 bytes)."),
     ts("Latency: video call vs download vs gNB queue", 3, 8, [
         target('flow_rtt_ms{flow="video"}', "video call RTT", "A"),
         target('flow_rtt_ms{flow="bulk"}', "download RTT", "B"),
@@ -96,7 +93,7 @@ panels = [
     ts("RLC buffer: occupancy vs cap in force", 11, 7, [
         target(rlc('upt_rlc_buffer_bytes_avg'), "RLC queue occupancy (avg)", "A"),
         target(rlc('upt_rlc_buffer_bytes_max'), "RLC queue occupancy (max)", "C"),
-        target('last_over_time(bufcap_limit_kb[24h]) * 1024', "cap in force", "B"),
+        target('(max(last_over_time(bufcap_limit_kb[24h])) or vector(6028)) * 1024', "cap in force", "B"),
     ], "bytes", [
         color("RLC queue occupancy (avg)", "#8a8984", **{"custom.fillOpacity": 35, "custom.lineWidth": 1}),
         color("RLC queue occupancy (max)", "#8a8984",
@@ -107,15 +104,12 @@ panels = [
 ]
 
 dash = {
-    "uid": "expA-bufcap", "title": "Exp A/B: buffer knob and bad channel", "tags": ["scout", "control"],
+    "uid": "demo3-bufcap", "title": "Demo 3: RLC buffer cap", "tags": ["control"],
     "time": {"from": "now-5m", "to": "now"}, "refresh": "1s", "schemaVersion": 39,
     "annotations": {"list": [{
         "name": "bufcap changes", "enable": True, "iconColor": "#0b0b0b",
         "datasource": {"type": "grafana", "uid": "-- Grafana --"},
-        "target": {"type": "tags", "tags": ["bufcap"], "limit": 100, "matchAny": True}},
-        {"name": "channel changes", "enable": True, "iconColor": "red",
-         "datasource": {"type": "grafana", "uid": "-- Grafana --"},
-         "target": {"type": "tags", "tags": ["badchan"], "limit": 100, "matchAny": True}}]},
+        "target": {"type": "tags", "tags": ["bufcap"], "limit": 100, "matchAny": True}}]},
     "panels": panels,
 }
 req = urllib.request.Request(f"{GRAFANA}/api/dashboards/db", method="POST",
@@ -123,4 +117,4 @@ req = urllib.request.Request(f"{GRAFANA}/api/dashboards/db", method="POST",
                              headers={"Content-Type": "application/json",
                                       "Authorization": "Basic " + base64.b64encode(b"admin:admin").decode()})
 print(json.load(urllib.request.urlopen(req)))
-print(f"-> {GRAFANA}/d/expA-bufcap")
+print(f"-> {GRAFANA}/d/demo3-bufcap")

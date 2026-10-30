@@ -620,7 +620,7 @@ Shortest path on an existing deployment (§6):
 ```bash
 cd "$REPO_ROOT"
 bash scripts/setup_zmq_chan_demo.sh 2 --telemetry     # two UEs with upt telemetry (~3-5 min)
-python3 buffer-control-experiments/make_dashboard.py  # once per Grafana install: /d/expA-bufcap
+python3 buffer-control-experiments/make_dashboard.py  # once per Grafana install: /d/demo3-bufcap
 bash buffer-control-experiments/traffic_A.sh start    # part 1: video call + bulk download on UE 1
 bash buffer-control-experiments/bufcap.sh load 64k    # a fixed cap; `off` restores the configured buffer
 bash buffer-control-experiments/bufcap.sh off

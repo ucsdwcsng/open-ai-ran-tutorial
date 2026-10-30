@@ -1,6 +1,6 @@
 // Copyright (c) Microsoft Corporation. Licensed under the MIT license.
 //
-// bufcap - fixed RLC DL buffer cap, for the control-hook tutorial (experiment A).
+// bufcap - fixed RLC DL buffer cap, for Demo 3 of the tutorial.
 //
 // HOOK: rlc_dl_ctrl (control hook in rlc_tx_am_entity::handle_sdu). Fires once per DL SDU
 // on each RLC AM DRB, before the enqueue/tail-drop decision.

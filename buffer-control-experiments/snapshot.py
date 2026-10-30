@@ -11,7 +11,6 @@ Writes results/session_<time>/{timeline.png, summary.json} and prints a per-cap 
 import argparse
 import json
 import os
-import re
 import time
 import urllib.parse
 import urllib.request
@@ -23,7 +22,6 @@ import plotlib
 HERE = os.path.dirname(os.path.abspath(__file__))
 VM = "http://localhost:30491"
 EVENTS = os.path.join(HERE, ".bufcap_events.jsonl")
-CHAN_EVENTS = os.path.join(HERE, ".badchan_events.jsonl")
 LABELS = {"video": "video call (2 Mbit/s)", "bulk": "download"}
 
 
@@ -47,7 +45,7 @@ def cap_label(text):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--minutes", type=float, default=10)
-    ap.add_argument("--title", default="Experiment A: interactive session")
+    ap.add_argument("--title", default="Demo 3: buffer caps")
     ap.add_argument("--ue", default=None,
                     help="DU UE index for the RLC metrics (default: the max over UEs, i.e. the one with traffic)")
     a = ap.parse_args()
@@ -76,24 +74,6 @@ def main():
     before = [e for e in evs if e["t"] < t0]
     caps = [(t0, cap_label(before[-1]["text"]), before[-1]["limit_kb"]) if before else (t0, "no cap", 6028)]   # OCUDU default queue
     caps += [(e["t"], cap_label(e["text"]), e["limit_kb"]) for e in evs if t0 <= e["t"] <= t1]
-
-    # channel state over the window, from a bad-channel event log if one exists (MCS cap 28 = normal)
-    cev = [json.loads(l) for l in open(CHAN_EVENTS) if l.strip()] if os.path.exists(CHAN_EVENTS) else []
-    def chan_name(e):
-        if e.get("text", "").startswith("trace "):
-            return e["text"].split(":")[0]
-        f = re.search(r"MCS <= (\d+) for (\d+) ms every (\d+) ms", e.get("text", ""))
-        if f:
-            return f"fading (MCS≤{f.group(1)}, {f.group(2)} of {f.group(3)} ms)"
-        return "channel normal" if e["mcs_cap"] >= 28 else f"bad channel (MCS≤{e['mcs_cap']})"
-    cbefore = [e for e in cev if e["t"] < t0]
-    chans = [(t0, chan_name(cbefore[-1]) if cbefore else "channel normal")]
-    chans += [(e["t"], chan_name(e)) for e in cev if t0 <= e["t"] <= t1]
-    if len(chans) > 1 or chans[0][1] != "channel normal":
-        # merge the two event streams: every change of either starts a new phase
-        times = sorted({t for t, *_ in caps} | {t for t, _ in chans})
-        at = lambda lst, t: [x for x in lst if x[0] <= t][-1]
-        caps = [(t, f"{at(caps, t)[1]}\n{at(chans, t)[1]}", at(caps, t)[2]) for t in times]
 
     # shift to seconds from the start of the window
     sh = lambda s: [(t - t0, v) for t, v in s]

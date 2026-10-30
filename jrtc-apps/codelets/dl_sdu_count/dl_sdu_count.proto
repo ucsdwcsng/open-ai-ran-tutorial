@@ -1,0 +1,9 @@
+syntax = "proto2";
+
+// One message per UE per period: the downlink SDUs and bytes that entered RLC.
+message dl_sdu_count {
+  required uint64 timestamp = 1;
+  required uint32 du_ue_index = 2;
+  required uint32 sdus = 3;
+  required uint64 bytes = 4;
+}

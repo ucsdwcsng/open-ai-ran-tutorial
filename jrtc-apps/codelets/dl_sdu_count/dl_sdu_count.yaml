@@ -1,0 +1,15 @@
+codeletset_id: dl_sdu_count
+
+codelet_descriptor:
+  - codelet_name: dl_sdu_count
+    codelet_path: ${JBPF_CODELETS}/dl_sdu_count/dl_sdu_count.o
+    hook_name: rlc_dl_new_sdu
+    priority: 1
+    out_io_channel:
+      - name: out_counts
+        forward_destination: DestinationNone
+        serde:
+          file_path: ${JBPF_CODELETS}/dl_sdu_count/dl_sdu_count:dl_sdu_count_serializer.so
+          protobuf:
+            package_path: ${JBPF_CODELETS}/dl_sdu_count/dl_sdu_count.pb
+            msg_name: dl_sdu_count

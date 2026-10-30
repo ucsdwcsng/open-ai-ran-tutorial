@@ -7,7 +7,7 @@
 #              TTI they target; any other slot runs the stock scheduler.
 #
 # Only one codelet can attach to a control hook. The older asynchronous edgeric_sched / edgeric_mcs sets
-# act on other hooks in the same scheduler; unload them while this set is loaded.
+# (and badchan) act on other hooks in the same scheduler; unload them while this set is loaded.
 
 codeletset_id: edgeric_rt
 

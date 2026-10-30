@@ -9,7 +9,8 @@ testbed host from the repo root, after a bring-up with telemetry
 |---|---|
 | `traffic_A.sh` | a paced 2 Mbit/s "video call" and a bulk download on one UE's bearer, sent from the UPF: `start`, `bulk-only`, `video-only`, `stop` (`--cc`, `--video-rate`, `--ue N`). Starts and stops `flowmon` |
 | `flowmon.sh`, `flowmon.py` | per-flow RTT and throughput from the sender's TCP stack (`ss -ti` in the UPF), written to VictoriaMetrics as `flow_rtt_ms` and `flow_tput_mbps` |
-| `bufcap.sh` | fixed RLC DL buffer caps on `rlc_dl_ctrl`: `build [SIZE ...]`, `load SIZE`, `off`, `unload`, `status`, `list` |
+| `bufcap.sh` | fixed RLC DL buffer caps on `rlc_dl_ctrl`: `build [SIZE ...]`, `load SIZE`, `off`, `unload`, `status`, `list`. `load dyn` loads the dynamic controller instead |
+| `gen_mu_h.py`, `mu_table.csv` | the MCS-to-link-rate table that `bufcap.sh` compiles into the dynamic controller |
 | `make_dashboard.py` | creates the Grafana dashboard `demo3-bufcap` (once per Grafana install) |
 | `snapshot.py`, `plotlib.py` | a timeline plot and a per-cap table of the last N minutes, in `results/session_<time>/` |
 

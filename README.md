@@ -121,6 +121,7 @@ The `--volume` bind-mount makes built binaries persist on the host across pod re
 ```bash
 kubectl create namespace open5gs
 helm install open5gs "$REPO_ROOT/open5gs" -n open5gs -f "$REPO_ROOT/open5gs/values-5g.yaml"
+until kubectl get pod -n open5gs -l app.kubernetes.io/name=mongodb -o name | grep -q .; do sleep 2; done
 kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=mongodb -n open5gs --timeout=180s
 
 # pcf/udr start before mongodb is ready — restart them once

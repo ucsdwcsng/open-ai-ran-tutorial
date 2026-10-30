@@ -2,9 +2,8 @@
 
 Developer guide and API spec for xApp authors.
 
-Companion docs: [`scout-control-doc.md`](./scout-control-doc.md) (original design and first experiment),
-[`RLC-CTRL-CHANGES.md`](../RLC-CTRL-CHANGES.md) (development log, decisions and open items),
-[`scout-telemetry-doc.md`](./scout-telemetry-doc.md) (the sensors you'd drive this from).
+Companion docs: [`control-codelets.md`](control-codelets.md) (all four control hooks and their conflicts)
+and [Demo 3](https://edgeric.github.io/open-ai-ran-tutorial/demo3-buffer-management.html) of the tutorial (the hook in use).
 
 ## 1. What it does
 
@@ -236,7 +235,7 @@ open across them.
 **Changing the gNB side** (this hook, or `jbpf_rlc_ctrl_info`) takes more than a rebuilt image: the gNB runs in an
 ephemeral container that cannot be replaced in place, so restarting the gNB process alone keeps the old binary. Build
 the image, `k3d image import` it, delete the gNB pod, re-patch the ephemeral container, then bring the pipeline up —
-the exact commands are in §6 of [`RLC-CTRL-CHANGES.md`](../RLC-CTRL-CHANGES.md). To check which binary is live, compare
+the commands are in README §5 (build, import) and §6 (recreate the gNB pod). To check which binary is live, compare
 `md5sum /usr/local/bin/gnb` inside the gNB pod's `ocudujbpf` container
 (`kubectl exec -n ran srs-gnb-du1-0 -c ocudujbpf -- md5sum /usr/local/bin/gnb`) with the same file in the image. A codelet built against
 newer context fields than the running gNB fails its bounds check on every packet.
@@ -269,7 +268,6 @@ Also open:
 - **Per-packet cost**: the hook runs on every downlink SDU while a codelet is loaded.
 - **Stale commands** after a UE is released, because the table is keyed on `du_ue_index`.
 
-The full list, with priorities, is in section 5 of [`RLC-CTRL-CHANGES.md`](../RLC-CTRL-CHANGES.md).
 
 ## 8. Operational contract for the example xApp
 

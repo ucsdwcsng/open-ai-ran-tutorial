@@ -1,4 +1,4 @@
-"""Shared timeline plot for experiment A (used by analyze.py and snapshot.py).
+"""Timeline plot for Demo 3 (used by snapshot.py).
 
 Three panels on one time axis, cap phases shaded and named along the top:
   1. Latency: each flow's TCP RTT (video bold, download thin) and the gNB's RLC

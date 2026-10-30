@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Independent downlink traffic per UE on the 2-UE testbed.
-# Bring-up is separate: scripts/setup_zmq_chan_demo.sh 2 (or setup_bufctl_2ue_demo.sh) must have run first.
+# Bring-up is separate: scripts/setup_zmq_chan_demo.sh 2 must have run first.
 #
 #   bash scripts/traffic_2ue.sh start [options]
 #   bash scripts/traffic_2ue.sh stop
@@ -21,7 +21,7 @@
 #
 # Direction: iperf3 -C sets congestion control on the process that SENDS, and for a
 # downlink flow the sender is the core. So `iperf3 -s` runs inside the UE's netns and
-# `iperf3 -c` runs on the UPF -- the same arrangement as scripts/traffic.sh.
+# `iperf3 -c` runs on the UPF -- the same arrangement as scripts/traffic_nue.sh.
 #
 # Ports: UE1 -> 5201, UE2 -> 5202, so the two flows never share a server.
 #

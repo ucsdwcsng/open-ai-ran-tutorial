@@ -39,4 +39,4 @@ echo "== [5/5] stop the broker (multi-UE runs: Python or C++) =="
 k grbroker 'pkill -9 -x python3 2>/dev/null; pkill -9 -x zmq_broker 2>/dev/null; rm -f /tmp/ran.env; sleep 1; echo "  broker stopped"' 25
 
 echo
-echo "STOPPED. Bring it back with:  bash scripts/restart_demo.sh"
+echo "STOPPED. Bring it back with:  bash scripts/setup_zmq_chan_demo.sh N [--telemetry]"

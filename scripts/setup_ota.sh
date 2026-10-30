@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Over-the-air bring-up on the k3d jbpf OCUDU gNB: a USRP is the radio, COTS phones or modems are the UEs.
-# The over-the-air counterpart of setup_zmq_chan_demo.sh. Walk-through: docs/open-ai-ran-tutorial/run_ota_cots.md
+# The over-the-air counterpart of setup_zmq_chan_demo.sh. Walk-through: docs/run_ota_cots.md
 #
 #   bash scripts/setup_ota.sh [options]
 #
@@ -77,7 +77,7 @@ kx $GC 'ldd /usr/local/bin/gnb 2>/dev/null | grep -q libuhd && command -v uhd_fi
   if [ -z "$IMG" ]; then echo "ERROR: the gNB pod has no '$GC' container."
   else echo "ERROR: the gNB container '$GC' runs $IMG, which has no UHD driver."; fi
   echo "  Build and import ocudu-gnb-jbpf:uhd (ota/gnb.Dockerfile), then recreate the gNB pod with it:"
-  echo "  docs/open-ai-ran-tutorial/run_ota_cots.md, steps 1 and 3."; exit 1; }
+  echo "  docs/run_ota_cots.md, steps 1 and 3."; exit 1; }
 if [ "$SDR" != b210 ]; then
   RM=$(cat /proc/sys/net/core/rmem_max); WM=$(cat /proc/sys/net/core/wmem_max)
   [ "$RM" -ge 33554432 ] && [ "$WM" -ge 33554432 ] ||

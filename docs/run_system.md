@@ -18,8 +18,8 @@ throughput, RLC and TCP metrics.
   MAC throughput, RLC queuing and TCP. The dashboard xApp also writes per-layer stats as JSON.
 - **Runtime:** ~10 min from a stopped cluster. Steps 1–3 only restore what a cluster stop/start
   wipes; on a running cluster go straight to step 5 (~3–5 min).
-- **Channel model and trace replay:** [`duranta-oai-ue/duranta-ue/docs/zmq-channel.md`](../../duranta-oai-ue/duranta-ue/docs/zmq-channel.md)
-- **Design notes and measurements:** [`duranta-oai-ue/README.md`](../../duranta-oai-ue/README.md),
+- **Channel model and trace replay:** [`duranta-oai-ue/duranta-ue/docs/zmq-channel.md`](../duranta-oai-ue/duranta-ue/docs/zmq-channel.md)
+- **Design notes and measurements:** [`duranta-oai-ue/README.md`](../duranta-oai-ue/README.md),
   section "N UEs with a per-UE channel"
 
 ## Quick start
@@ -436,7 +436,7 @@ On 2026-10-06, with `ue_channel_4ue.conf` and CUBIC to all four UEs, the TCP row
 / 7.3 / 7.1 Mbit/s for UE 1–4 (2-minute averages). The dashboard xApp reported DL CQI 15 / 13 /
 12 and DL MCS 26.6 / 18.9 / 12.0 for UE 1–3, with UE 4's rising and falling as it moved. RLC
 queuing latency on DRB1 sat at 1.0–1.25 s for every UE: CUBIC fills the deep RLC queue, the
-bufferbloat the buffer-control demos address ([demo1](demo1/README.md)).
+bufferbloat that [Demo 3](https://edgeric.github.io/open-ai-ran-tutorial/demo3-buffer-management.html) addresses.
 
 ### 7c. The dashboard xApp
 
@@ -624,7 +624,7 @@ file in the `durue1` container. `trace_ctl.sh` does the following:
 
 The UE polls its control file every 100 ms on a normal-priority thread, loads the trace, and
 switches at T on the same sample in both directions. The UE side:
-[`zmq-channel.md`](../../duranta-oai-ue/duranta-ue/docs/zmq-channel.md), "Trace replay".
+[`zmq-channel.md`](../duranta-oai-ue/duranta-ue/docs/zmq-channel.md), "Trace replay".
 
 ### What it looked like
 

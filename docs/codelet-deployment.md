@@ -215,4 +215,4 @@ own — `jrtc-ctl`'s hardcoded default wins. That is the whole reason the forwar
 
 - README §8 — load/unload command reference
 - [`docs/control-codelets.md`](control-codelets.md) — the four control hooks and their exclusivity
-- [`open-ai-ran-tutorial/demo1/README.md`](open-ai-ran-tutorial/demo1/README.md) steps 2, 3 and 5 — bring-up after a cluster restart
+- README §6, *after a cluster (re)start* — bring-up after a cluster restart

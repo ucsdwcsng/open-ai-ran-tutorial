@@ -1,5 +1,5 @@
 # The jbpf OCUDU gNB with the UHD driver (USRP B2xx / X3xx / N3xx), for the over-the-air run with
-# COTS UEs (docs/open-ai-ran-tutorial/run_ota_cots.md). Same build as ocudu-jbpf/docker/Dockerfile
+# COTS UEs (docs/run_ota_cots.md). Same build as ocudu-jbpf/docker/Dockerfile
 # plus -DENABLE_UHD=ON. ZMQ stays on, and the ocudu-jbpf tree carries the ipc:// patch, so this one
 # image also runs the ZMQ system in place of :ipc.
 #

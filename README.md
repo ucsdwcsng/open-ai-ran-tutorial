@@ -33,7 +33,7 @@ Path-independent: every command derives paths from `REPO_ROOT`, so the checkout 
 | [9](#9-telemetry-and-grafana) | **Telemetry and Grafana** |
 | [10](#10-control-codelets) | **Control codelets** (RLC buffer · DL sched · DL MCS · L4S) |
 | [11](#11-stop--status) | Stop & status |
-| [12](#12-the-buffer-control-demos) | **The buffer-control demos** — 1-UE and 2-UE walk-throughs |
+| [12](#12-the-buffer-control-demos) | **The buffer-control demos** — fixed caps on one UE, then a limit per UE |
 | [13](#13-edgeric-rt-tti-synchronized-scheduling-and-the-rl-muapp) | **EdgeRIC-RT** — TTI-synchronized scheduling loop, scheduler muApps, PPO |
 | [14](#14-per-ue-channels-and-traces) | **Per-UE channels and traces**, switched while traffic runs |
 | [Reference](#reference) | Repo layout, codelets & xApps, hooks, scripts, docs |
@@ -313,7 +313,7 @@ Any N up to 64 works; four UEs keep up with real time on a 2 × Xeon Gold 5218 s
 the broker, gNB and UEs together; re-running the script is also how you recover from a partial attach.
 Extra `nr-uesoftmodem` / gNB options go in `UE_ARGS` / `GNB_ARGS`; the script prints its full usage when
 run without arguments. Walkthrough:
-[`docs/open-ai-ran-tutorial/run_system.md`](docs/open-ai-ran-tutorial/run_system.md).
+[`docs/run_system.md`](docs/run_system.md).
 
 ### By hand: 4 UEs on the GNU Radio broker
 
@@ -508,8 +508,8 @@ four below, and `mac_sched_slot_ctrl`, which EdgeRIC-RT drives every TTI (§13).
 
 Sets the DL RLC queue's byte and/or SDU-count limit per `(UE, DRB)` at run time, from an
 xApp. The codelet is `bufctl`; `jrtc_apps/bufctl` is the sample xApp plus an interactive
-CLI. See §12 for the guided walk-through, and `docs/scout/rlc-buffer-control-hook.md` for the hook
-API.
+CLI. See §12 for the guided walk-through, and [`docs/rlc-buffer-control-hook.md`](docs/rlc-buffer-control-hook.md)
+for the hook API.
 
 ```bash
 JRTC 'load -c /apps/bufctl/deployment.yaml'
@@ -607,22 +607,26 @@ k3d cluster delete "$CLUSTER"                # tear it down
 
 ## 12. The buffer-control demos
 
-The RLC buffer-control walk-throughs live in
-**[`docs/open-ai-ran-tutorial/`](docs/open-ai-ran-tutorial/README.md)**, which also carries the
-prerequisites, the cluster-name overrides, and the upgrade path for an existing deployment.
+The guided walk-through is [Demo 3](https://edgeric.github.io/open-ai-ran-tutorial/demo3-buffer-management.html) of the Open AI-RAN tutorial,
+in two parts:
 
 | | What it shows |
 |---|---|
-| [demo1](docs/open-ai-ran-tutorial/demo1/README.md) | **One UE.** A 2 Mbit/s "video call" plus a bulk download on the same bearer: the download fills the queue and the call's RTT climbs to ~600 ms. Stepping a fixed cap down (`bufcap`) fixes the latency long before it costs throughput. |
-| [demo2](docs/open-ai-ran-tutorial/demo2/README.md) | **Two UEs, a limit each.** Independent downloads with different congestion control — BBR on one, CUBIC on the other — commanded per `(UE, DRB)` from `bufctl_cli.py`. Shows both that policy is per-bearer, and that the same limit affects the two transports very differently. |
+| Part 1 | **One UE.** A 2 Mbit/s "video call" plus a bulk download on the same bearer: the download fills the queue and the call's RTT climbs to ~600 ms. Stepping a fixed cap down (`bufcap`) fixes the latency long before it costs throughput. |
+| Part 2 | **Two UEs, a limit each.** Independent downloads with different congestion control — BBR on one, CUBIC on the other — commanded per `(UE, DRB)` from `bufctl_cli.py`. Shows both that policy is per-bearer, and that the same limit affects the two transports very differently. |
 
-Shortest possible path on an existing deployment:
+Shortest path on an existing deployment (§6):
 
 ```bash
 cd "$REPO_ROOT"
-bash scripts/setup_bufctl_1ue_demo.sh    # gNB + UE + telemetry, no traffic (~4-5 min)
-bash scripts/traffic.sh start
-python3 jrtc-apps/jrtc_apps/bufctl/bufctl_cli.py
+bash scripts/setup_zmq_chan_demo.sh 2 --telemetry     # two UEs with upt telemetry (~3-5 min)
+python3 buffer-control-experiments/make_dashboard.py  # once per Grafana install: /d/expA-bufcap
+bash buffer-control-experiments/traffic_A.sh start    # part 1: video call + bulk download on UE 1
+bash buffer-control-experiments/bufcap.sh load 64k    # a fixed cap; `off` restores the configured buffer
+bash buffer-control-experiments/bufcap.sh off
+bash buffer-control-experiments/traffic_A.sh stop
+bash scripts/traffic_2ue.sh start                     # part 2: UE 1 BBR, UE 2 CUBIC
+python3 jrtc-apps/jrtc_apps/bufctl/bufctl_cli.py      # a limit per (UE, DRB)
 ```
 
 Control-hook reference (all four hooks, their contexts and conflicts):
@@ -704,7 +708,7 @@ channels, the UE's built-in mobility model, and **CQI 4..15** processes mapped t
 | `ue_traces_cqi_s1.conf`, `_s2`, `_s3` | 2 UEs: walks; good vs bad; iid (CQI) |
 | `ue_traces_cal.conf` | calibration: UE 1 sweeps 0 → 24 dB ([docs/edgeric-rt.md](docs/edgeric-rt.md#channel-traces-reported-cqi-415)) |
 
-Walkthrough: [`docs/open-ai-ran-tutorial/run_system.md`](docs/open-ai-ran-tutorial/run_system.md) (§4).
+Walkthrough: [`docs/run_system.md`](docs/run_system.md) (§4).
 
 ---
 
@@ -778,13 +782,12 @@ Run them from the repo root; each derives its own paths.
 |---|---|
 | **Bring-up and checks** | |
 | `setup_zmq_chan_demo.sh N [options]` | N-UE bring-up, broker → gNB → UEs (§6) |
-| `setup_ota.sh [options]` | over-the-air bring-up: a USRP and COTS UEs ([`run_ota_cots.md`](docs/open-ai-ran-tutorial/run_ota_cots.md)) |
+| `setup_ota.sh [options]` | over-the-air bring-up: a USRP and COTS UEs ([`run_ota_cots.md`](docs/run_ota_cots.md)) |
 | `gnb_console.sh [LINES]` | the gNB console: one metrics row per UE every second, without the jbpf agent's lines |
 | `zmq_rt_check.sh [seconds]` | is the chain in real time: % of real time, lateness, CPU, each UE's channel |
 | `zmq_tune.sh apply\|show` | SCHED_FIFO for the gNB and broker, one NUMA node (the bring-up applies it) |
 | `core_ue_info.sh [--tcp-map]` | each UE's IMSI, IP and NGAP IDs from the core, for the dashboard xApps |
 | `stop_demo.sh` | stop traffic, probes, UEs, gNB and broker (§11) |
-| `bringup_4ue_demo_v2.sh` | older: the by-hand 4-UE path (§6b–6d) as one script |
 | **Traffic** | |
 | `traffic_nue.sh start\|status\|stop` | DL traffic per UE for the N-UE bring-up (§7) |
 | `udp_sink.pl` | the plain-UDP receiver behind `traffic_nue.sh --plain` |
@@ -798,23 +801,20 @@ Run them from the repo root; each derives its own paths.
 | `edgeric_muapp.sh start\|ctl\|logs\|stop\|status\|run` | the muApps in `edgeric-0` |
 | `edgeric_eval.sh SCHED ...` | compare schedulers on the same channel |
 | `ue_rnti_map.sh [N]` | the `ue<n>` → C-RNTI map the muApps use |
-| **Buffer-control demos** (§12; see [`scripts/README.md`](scripts/README.md)) | |
-| `setup_bufctl_1ue_demo.sh`, `setup_bufctl_2ue_demo.sh` | 1-UE / 2-UE bring-up with `upt` telemetry |
-| `traffic.sh`, `traffic_2ue.sh`, `stop_traffic.sh` | their traffic; `stop_traffic.sh` stops every iperf3 |
-| `status.sh`, `restart_demo.sh` | what is up and in force; setup and traffic in one command |
+| **Buffer control** (§12; the rest is in `buffer-control-experiments/`) | |
+| `traffic_2ue.sh start\|status\|stop` | one DL flow per UE, each with its own congestion control |
 
 ### Docs
 
 | Doc | What |
 |---|---|
 | [Open AI-RAN tutorial](https://edgeric.github.io/open-ai-ran-tutorial.html) | the step-by-step tutorial, with demos |
-| [`docs/open-ai-ran-tutorial/run_system.md`](docs/open-ai-ran-tutorial/run_system.md) | the N-UE system with a channel per UE, step by step |
-| [`docs/open-ai-ran-tutorial/run_ota_cots.md`](docs/open-ai-ran-tutorial/run_ota_cots.md) | the same gNB over the air: a USRP and COTS phones or modems |
+| [`docs/run_system.md`](docs/run_system.md) | the N-UE system with a channel per UE, step by step |
+| [`docs/run_ota_cots.md`](docs/run_ota_cots.md) | the same gNB over the air: a USRP and COTS phones or modems |
 | [`docs/edgeric-rt.md`](docs/edgeric-rt.md) | EdgeRIC-RT: the loop, muApps, PPO training, dashboard, results |
-| [`docs/open-ai-ran-tutorial/README.md`](docs/open-ai-ran-tutorial/README.md) | the buffer-control demos (§12) |
 | [`docs/control-codelets.md`](docs/control-codelets.md) | the control hooks: contexts and conflicts |
 | [`docs/codelet-deployment.md`](docs/codelet-deployment.md) | why the `jrtc-ctl` forwarder exists; debugging load/unload failures |
-| [`docs/scout/rlc-buffer-control-hook.md`](docs/scout/rlc-buffer-control-hook.md) | RLC DL buffer-size control hook (`rlc_dl_ctrl`): API spec + xApp developer guide |
+| [`docs/rlc-buffer-control-hook.md`](docs/rlc-buffer-control-hook.md) | RLC DL buffer-size control hook (`rlc_dl_ctrl`): API spec + xApp developer guide |
 
 ---
 

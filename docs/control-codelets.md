@@ -11,7 +11,7 @@ codelet may attach to a given control hook at a time.
 |---|---|---|---|
 | `rlc_dl_ctrl` | DL RLC queue byte / SDU limit, per `(UE, DRB)` | per DL packet on the bearer | `bufctl`, `bufcap`, `bufdyn_ctl` |
 | `mac_sched_dl_ctrl` | per-UE DL PRB-share cap | per UE, per slot, at the PRB-grant point | `dl_sched` (`edgeric_sched`) |
-| `mac_sched_dl_mcs_ctrl` | per-UE DL MCS | per newTx UE, at link adaptation | `dl_mcs` (`edgeric_mcs`), `badchan` |
+| `mac_sched_dl_mcs_ctrl` | per-UE DL MCS | per newTx UE, at link adaptation | `dl_mcs` (`edgeric_mcs`) |
 | `pdcp_dl_sdu_segment` | ECN bits of the DL IP packet, in place | per DL DRB SDU segment | `l4span_mark` |
 
 Hook declarations live in `ocudu-jbpf/srsran_jbpf/verifier/specs/jbpf_srsran_hooks.h`; the
@@ -32,9 +32,9 @@ Sets the downlink RLC queue's byte and/or SDU-count limit for one `(UE, DRB)` at
 is the bufferbloat knob: a deep queue lets a loss-based sender build a multi-second standing
 backlog, and capping it trades a little throughput for a large latency reduction.
 
-Full hook API, mechanism and clamping rules: [`rlc-buffer-control-hook.md`](scout/rlc-buffer-control-hook.md).
-Guided walk-throughs: [`open-ai-ran-tutorial/demo1`](open-ai-ran-tutorial/demo1/README.md) (one UE,
-fixed caps) and [`demo2`](open-ai-ran-tutorial/demo2/README.md) (two UEs, per-UE limits).
+Full hook API, mechanism and clamping rules: [`rlc-buffer-control-hook.md`](rlc-buffer-control-hook.md).
+Guided walk-through: [Demo 3](https://edgeric.github.io/open-ai-ran-tutorial/demo3-buffer-management.html) of the tutorial (one UE with
+fixed caps, then two UEs with per-UE limits).
 
 ### Context — `struct jbpf_rlc_ctrl_info`
 
@@ -203,17 +203,6 @@ Policies in `/tmp/edgeric_mcs_policy`:
 | `fixed:m0,m1,m2,m3` | per-UE MCS |
 | `offset:K` | `cur_mcs + K` per UE (K may be negative), clamped to 0..28 |
 
-**`badchan`** — "bad radio" emulation for experiment B. Caps every UE's DL MCS at a ceiling so
-each PRB carries fewer bits and the UE's rate falls, as if the channel had faded. It only ever
-*lowers* the MCS. Driven by `buffer-control-experiments/radio.sh`:
-
-```bash
-bash buffer-control-experiments/radio.sh 10          # sustained: cap at MCS <= 10 (~9.5 Mbit/s)
-bash buffer-control-experiments/radio.sh 10 fade     # dip to MCS <= 10 for 100 ms every 400 ms
-bash buffer-control-experiments/radio.sh trace ped   # replay a pedestrian channel trace
-bash buffer-control-experiments/radio.sh good        # unload: back to the real channel
-```
-
 Verify the override is landing — the QAM order in the PDSCH log drops with the MCS:
 
 ```bash
@@ -221,7 +210,6 @@ kubectl exec -n ran srs-gnb-du1-0 -c ocudujbpf -- \
   bash -c 'grep -aoE "PDSCH: .* mod=[0-9]+QAM" /tmp/gnb.log | tail -3'
 ```
 
-`dl_mcs` and `badchan` both want this hook, so they cannot be loaded together.
 
 ---
 
@@ -271,9 +259,8 @@ index assignment — the two halves will silently act on different UEs. Nothing 
 **One codelet per hook.** The exclusivity is per hook, so the practical conflicts are:
 
 - `rlc_dl_ctrl` — `bufctl` vs `bufcap` vs `bufdyn_ctl`
-- `mac_sched_dl_mcs_ctrl` — `dl_mcs` vs `badchan`
 
-Loading a second codelet on an occupied hook fails. If demo 1 left a `bufcap` cap loaded,
+Loading a second codelet on an occupied hook fails. If a `bufcap` cap is still loaded,
 `bash buffer-control-experiments/bufcap.sh off` clears it before you start `bufctl_cli.py`.
 
 **They run on the fast path.** `rlc_dl_ctrl` fires on every downlink packet of the bearer,
@@ -315,9 +302,6 @@ settle it.
 
 | Document | Covers |
 |---|---|
-| [`../rlc-buffer-control-hook.md`](scout/rlc-buffer-control-hook.md) | `rlc_dl_ctrl` in depth: mechanism, API, clamping |
-| [`../buffer-control-experiments/EXPERIMENTS.md`](../buffer-control-experiments/EXPERIMENTS.md) | the buffer/channel experiments and measured results |
-| [`../buffer-control-experiments/HOW_TO_RUN.md`](../buffer-control-experiments/HOW_TO_RUN.md) | commands-only guide for experiments A and B |
-| [`open-ai-ran-tutorial/demo1/README.md`](open-ai-ran-tutorial/demo1/README.md) | 1 UE, fixed buffer caps, bufferbloat |
-| [`open-ai-ran-tutorial/demo2/README.md`](open-ai-ran-tutorial/demo2/README.md) | 2 UEs, per-UE limits, BBR vs CUBIC |
+| [`rlc-buffer-control-hook.md`](rlc-buffer-control-hook.md) | `rlc_dl_ctrl` in depth: mechanism, API, clamping |
+| [Demo 3](https://edgeric.github.io/open-ai-ran-tutorial/demo3-buffer-management.html) | 1 UE with fixed buffer caps, then 2 UEs with per-UE limits, BBR vs CUBIC |
 | README §10 | the original quick reference these notes expand on |

@@ -416,5 +416,5 @@ inherits another's backlog.
 - **Keep jrtc free of heavy Python xApps.** Python xApps in jrtc share one GIL with the bridge. The upt and dashboard
   xApps handle many streams; `setup_zmq_chan_demo.sh --edgeric` without `--telemetry` gives a fresh jrtc-0 with only the
   bridge. The dashboard-realtime-scheduling xApp is light (one bucketed stream); see its A/B above.
-- **Old sets.** Unload the older `edgeric_sched` / `edgeric_mcs` (and `badchan`) sets while `edgeric_rt` is loaded.
+- **Old sets.** Unload the older `edgeric_sched` / `edgeric_mcs` sets while `edgeric_rt` is loaded.
   They act on the same scheduler.

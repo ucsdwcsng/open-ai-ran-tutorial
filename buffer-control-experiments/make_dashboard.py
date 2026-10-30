@@ -73,7 +73,7 @@ panels = [
          "Set by bufcap.sh. No cap = the gNB's configured RLC queue (OCUDU default 6172672 bytes).", w=4),
     stat("Channel: DL MCS ceiling", 20, 'last_over_time(badchan_mcs_cap[24h]) or vector(28)', "none",
          [{"color": "red", "value": None}, {"color": "#eda100", "value": 11}, {"color": "green", "value": 28}],
-         "Set by badchan.sh (experiment B). 28 = normal channel; lower = worse channel.", w=4),
+         "28 = normal channel; lower = an MCS ceiling is in force.", w=4),
     ts("Latency: video call vs download vs gNB queue", 3, 8, [
         target('flow_rtt_ms{flow="video"}', "video call RTT", "A"),
         target('flow_rtt_ms{flow="bulk"}', "download RTT", "B"),

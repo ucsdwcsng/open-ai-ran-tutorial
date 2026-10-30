@@ -1,3 +1,0 @@
-{"name": "baseline_cubic", "title": "Baseline: 1 UE, CUBIC, default RLC queue (8 MB)",
- "duration": 90, "idle_ping": 20, "bufctl": false,
- "ues": [{"label": "UE-A", "container": "durue1", "du_index": 0, "cc": "cubic", "port": 5201}]}

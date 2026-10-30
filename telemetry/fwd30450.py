@@ -4,7 +4,8 @@
 # jrtc-ctl hardcodes 127.0.0.1:30450 for the jbpf device, but in k3d the gNB
 # agent is only reachable through a service name. This listens on that fixed
 # local address inside the jrtc pod and forwards to the proxy service.
-# Staged into jrtc-0 and started by telemetry/fresh_start_demo.sh.
+# Staged into jrtc-0 and started by scripts/setup_zmq_chan_demo.sh (and edgeric_rt.sh,
+# dashboard_realtime_scheduling.sh, setup_ota.sh) when it is not already running.
 #
 # Kept byte-identical to the version used for every verified bring-up; the
 # variant in ocudu-jbpf/deploy/fwd.py differs and is NOT interchangeable.

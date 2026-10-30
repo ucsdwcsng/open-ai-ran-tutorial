@@ -143,7 +143,7 @@ nothing:
 ```
 
 **Your own keys:** program the IMSI (still `99970…`) and keep the card's Ki/OPc. Then list each SIM
-in a copy of [`ota/sims.conf`](../../ota/sims.conf), one `IMSI Ki OPc` line per SIM, and pass it as
+in a copy of [`ota/sims.conf`](../ota/sims.conf), one `IMSI Ki OPc` line per SIM, and pass it as
 `--sims <file>`. The setup adds each SIM to Open5GS, or updates the keys of an IMSI that already
 exists.
 

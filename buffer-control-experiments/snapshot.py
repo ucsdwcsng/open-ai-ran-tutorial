@@ -77,7 +77,7 @@ def main():
     caps = [(t0, cap_label(before[-1]["text"]), before[-1]["limit_kb"]) if before else (t0, "no cap", 6028)]   # OCUDU default queue
     caps += [(e["t"], cap_label(e["text"]), e["limit_kb"]) for e in evs if t0 <= e["t"] <= t1]
 
-    # channel state over the window, from badchan.sh's event log (MCS cap 28 = normal)
+    # channel state over the window, from a bad-channel event log if one exists (MCS cap 28 = normal)
     cev = [json.loads(l) for l in open(CHAN_EVENTS) if l.strip()] if os.path.exists(CHAN_EVENTS) else []
     def chan_name(e):
         if e.get("text", "").startswith("trace "):

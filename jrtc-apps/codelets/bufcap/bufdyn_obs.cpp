@@ -5,8 +5,8 @@
 // HOOK: mac_sched_harq_dl (telemetry hook, fires per DL HARQ event). On every new DL
 // transmission it records the MCS the scheduler actually used for that UE into mcs_map,
 // which the controller (bufdyn_ctl on rlc_dl_ctrl) reads through a linked map.
-// It observes the real MCS, so the controller follows ANY channel change (badchan fade,
-// trace or step, or real link adaptation) without sharing a schedule with it.
+// It observes the real MCS, so the controller follows ANY channel change (a fade,
+// a trace or step, or real link adaptation) without sharing a schedule with it.
 
 #include <linux/bpf.h>
 

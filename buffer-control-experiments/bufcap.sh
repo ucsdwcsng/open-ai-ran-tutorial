@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# bufcap.sh - build, load and unload the fixed RLC DL buffer-cap codelet (experiment A).
+# bufcap.sh - build, load and unload the fixed RLC DL buffer-cap codelet (Demo 3).
 #
 #   bash buffer-control-experiments/bufcap.sh build [SIZE ...]   # default: off 16k 64k 256k 1m
 #   bash buffer-control-experiments/bufcap.sh load SIZE          # e.g. 256k; swaps out any loaded cap

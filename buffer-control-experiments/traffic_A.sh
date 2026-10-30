@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Experiment A traffic on the single-UE testbed: a paced "video call" + a bulk download,
+# Demo 3 traffic: a paced "video call" + a bulk download,
 # both downlink on the same UE/DRB. Sender on the UPF so -C picks its congestion control.
 #
 #   bash buffer-control-experiments/traffic_A.sh start [--cc cubic|bbr] [--video-rate 2M] [--time 3600] [--ue N]
@@ -7,7 +7,7 @@
 #   bash buffer-control-experiments/traffic_A.sh stop
 #
 # --ue N (default 1): the UE in network namespace ue<N> (scripts/setup_zmq_chan_demo.sh). Without that
-# namespace the UE is the single direct-mode UE of scripts/setup_bufctl_1ue_demo.sh.
+# namespace the UE is a single direct-mode UE in the container's own namespace.
 set -uo pipefail
 export PATH="$HOME/.local/bin:$PATH"
 export KUBECONFIG="${KUBECONFIG:-$(k3d kubeconfig write "${K3D_CLUSTER:-janus-cluster}" 2>/dev/null)}"
@@ -28,7 +28,7 @@ ue()  { kubectl exec -n $NS $POD -c durue1 -- bash -c "$1" 2>/dev/null; }
 upf() { kubectl exec -n open5gs "$UPF" -c open5gs-upf -- bash -c "$1" 2>/dev/null; }
 # iperf3 runs under a backgrounded HOST-SIDE kubectl exec (not "setsid ... & disown" inside
 # the container), so the runtime reaps it when it exits instead of leaving a zombie under the
-# container's PID 1. Same pattern as scripts/traffic.sh.
+# container's PID 1. Same pattern as scripts/traffic_nue.sh.
 ue_bg()  { setsid nohup kubectl exec -n $NS $POD -c durue1 -- "$@" >/dev/null 2>&1 </dev/null & }
 upf_bg() { setsid nohup kubectl exec -n open5gs "$UPF" -c open5gs-upf -- "$@" >/dev/null 2>&1 </dev/null & }
 # The UE's receivers run where its tunnel is: in netns ue<N>, else in the container's own namespace.

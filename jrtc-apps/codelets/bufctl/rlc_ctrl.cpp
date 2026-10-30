@@ -31,7 +31,7 @@
 // place (send RESET first if you want the configured sizes back).
 //
 // TODO(scout): RLC UM DRBs have no rlc_dl_ctrl hook yet; only AM DRBs can be controlled.
-// Full TODO list: RLC-CTRL-CHANGES.md; API reference: rlc-buffer-control-hook.md.
+// API reference: docs/rlc-buffer-control-hook.md.
 
 #include <linux/bpf.h>
 #include <string.h>

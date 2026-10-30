@@ -1,0 +1,8 @@
+jbpf:
+  cfg:
+    jbpf_enable_ipc: 1
+
+jrtc_controller:
+  local_decoder: 
+    enabled: true
+

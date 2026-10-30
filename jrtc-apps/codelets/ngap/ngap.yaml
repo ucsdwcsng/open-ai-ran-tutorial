@@ -1,0 +1,45 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+codeletset_id: ngap
+
+codelet_descriptor:
+
+  - codelet_name: ngap_procedure_started
+    codelet_path: ${JBPF_CODELETS}/ngap/ngap_procedure_started.o
+    hook_name: ngap_procedure_started
+    priority: 1
+    out_io_channel:
+      - name: output_map
+        forward_destination: DestinationNone
+        serde:
+          file_path: ${JBPF_CODELETS}/ngap/ngap:ngap_procedure_started_serializer.so
+          protobuf:
+            package_path: ${JBPF_CODELETS}/ngap/ngap.pb
+            msg_name: ngap_procedure_started
+
+  - codelet_name: ngap_procedure_completed
+    codelet_path: ${JBPF_CODELETS}/ngap/ngap_procedure_completed.o
+    hook_name: ngap_procedure_completed
+    priority: 1
+    out_io_channel:
+      - name: output_map
+        forward_destination: DestinationNone
+        serde:
+          file_path: ${JBPF_CODELETS}/ngap/ngap:ngap_procedure_completed_serializer.so
+          protobuf:
+            package_path: ${JBPF_CODELETS}/ngap/ngap.pb
+            msg_name: ngap_procedure_completed
+
+  - codelet_name: ngap_reset
+    codelet_path: ${JBPF_CODELETS}/ngap/ngap_reset.o
+    hook_name: ngap_reset
+    priority: 1
+    out_io_channel:
+      - name: output_map
+        forward_destination: DestinationNone
+        serde:
+          file_path: ${JBPF_CODELETS}/ngap/ngap:ngap_reset_serializer.so
+          protobuf:
+            package_path: ${JBPF_CODELETS}/ngap/ngap.pb
+            msg_name: ngap_reset

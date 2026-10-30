@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=../../tools/schemas/jrtc-ctl..schema.json
+#
+# dashboard-realtime-scheduling: per-UE CQI, DL backlog and gNB throughput, from the rts_stats codelet on
+# mac_sched_slot_report, to VictoriaMetrics for the Grafana dashboard of the same name. With the UPF's TCP
+# throughput (telemetry/tcp_probe.py) it shows what each EdgeRIC-RT scheduler does. Load with
+# scripts/dashboard_realtime_scheduling.sh load, or by hand:
+#
+#   jrtc-ctl load -c /apps/dashboard_realtime_scheduling/deployment.yaml      (inside jrtc-0, fwd30450.py running)
+#   jrtc-ctl unload -c /apps/dashboard_realtime_scheduling/deployment.yaml
+
+name: dashboard-realtime-scheduling
+
+decoder:
+  - type: decodergrpc
+    host: jrtc-decoder.ran.svc.cluster.local
+    port: 20789
+
+app:
+  - name: dashboard-realtime-scheduling
+    path: ${JRTC_APPS}/dashboard_realtime_scheduling/dashboard_realtime_scheduling.py
+    type: python
+    host: jrtc-service.ran.svc.cluster.local
+    port: 3001
+    modules:
+      - ${JBPF_CODELETS}/dashboard_realtime_scheduling/rts_stats.py
+
+jbpf:
+  device:
+    - id: 1
+      host: srs-gnb-du1-proxy.ran.svc.cluster.local
+      port: 30450
+
+  codelet_set:
+    - device: 1
+      config: ${JBPF_CODELETS}/dashboard_realtime_scheduling/dashboard_realtime_scheduling.yaml

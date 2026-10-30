@@ -1,0 +1,96 @@
+# OCUDU (jbpf) gNB over the air for COTS UEs, band n78, 20 MHz TDD -- k3d.
+# The cell, core and telemetry of the ZMQ system (duranta-oai-ue/gnb_zmq_tdd_n78_20mhz.yml); the radio is
+# a second file, one per SDR:
+#
+#   gnb -c gnb_ota_tdd_n78_20mhz.yml -c ru_b210.yml        (or ru_x310.yml / ru_n310.yml)
+#
+# scripts/setup_ota.sh --sdr <b210|x310|n310> does this. What the ZMQ config has and this one does not:
+#   - ru_sdr: a ru_<sdr>.yml file instead of the ZMQ device
+#   - expert_phy.max_proc_delay 8: headroom for the lock-step ZMQ loop; over the air it only adds DL latency
+#   - pdsch/pusch OLLA overrides and pucch.nof_cell_csi_res 1: they compensate for the OAI UE's CQI and
+#     PUCCH handling. COTS UEs get the OCUDU defaults (pusch.dmrs_additional_position is 2 by default too).
+# Same cell as the ZMQ system otherwise: n78, 3489.42 MHz, 7 DL : 3 UL, PLMN 99970, TAC 1, PCI 1.
+#
+# 3489.42 MHz is licensed spectrum. Transmit over the air only under a licence (e.g. an FCC experimental
+# licence) or inside a shielded box; otherwise cable the SDR to the UE through attenuators.
+
+cu_cp:
+  amf:
+    addr: open5gs-amf-ngap.open5gs.svc.cluster.local
+    port: 38412
+    bind_addr: 0.0.0.0
+    supported_tracking_areas:
+      - tac: 1
+        plmn_list:
+          - plmn: "99970"
+            tai_slice_support_list:
+              - sst: 1
+  max_nof_ues: 64
+  inactivity_timer: 7200             # keep an idle phone connected (and its telemetry identity) for 2 h
+  request_pdu_session_timeout: 30
+
+cu_up:
+  ngu:
+    socket:
+      - bind_addr: 10.42.0.92        # N3: the gNB pod IP; setup_ota.sh rewrites it at start-up
+
+cell_cfg:
+  dl_arfcn: 632628                   # 3489.42 MHz; inside n77 too: a UE without n78 needs band: 77 below
+  band: 78
+  channel_bandwidth_MHz: 20
+  common_scs: 30
+  plmn: "99970"                      # must be the SIMs' home PLMN (IMSI 99970...)
+  tac: 1
+  pci: 1
+  nof_antennas_dl: 1                 # 2 (and nof_antennas_ul: 2 on a B210) for 2x2 MIMO on a 2-channel SDR
+  nof_antennas_ul: 1
+  tdd_ul_dl_cfg:                     # 7 DL : 3 UL, as the ZMQ system
+    dl_ul_tx_period: 10              # 10 slots @ 30 kHz SCS = 5 ms period
+    nof_dl_slots: 7                  # 7 full DL slots (slots 0-6)
+    nof_dl_symbols: 0                # special slot (slot 7) starts with the guard period
+    nof_ul_slots: 2                  # 2 full UL slots (slots 8-9)
+    nof_ul_symbols: 10               # + 10 UL symbols in the special slot (4 symbols guard)
+
+log:
+  filename: /tmp/gnb.log
+  all_level: warning
+
+pcap:
+  mac_enable: false
+  mac_filename: /tmp/gnb_ota_mac.pcap
+  ngap_enable: false
+  ngap_filename: /tmp/gnb_ota_ngap.pcap
+
+remote_control:
+  enabled: true
+  bind_addr: 127.0.0.1
+  port: 55555
+
+metrics:
+  enable_json: true
+  autostart_stdout_metrics: true
+  layers:
+    enable_sched: true
+    enable_mac: true
+    enable_rlc: true
+    enable_pdcp: true
+    enable_ngap: true
+    enable_ru: true                  # "Late: N; Underflow: N; Overflow: N;" on stdout when the SDR misses real time
+
+jbpf:
+  jbpf_run_path: "/tmp"
+  jbpf_namespace: "jbpf"
+  jbpf_enable_ipc: 1
+  jbpf_standalone_io_out_ip: "127.0.0.1"
+  jbpf_standalone_io_out_port: 20788
+  jbpf_standalone_io_in_port: 30400
+  jbpf_io_mem_size_mb: 1024
+  jbpf_ipc_mem_name: "jrt_controller"
+  jbpf_enable_lcm_ipc: 1
+  jbpf_lcm_ipc_name: "jbpf_lcm_ipc"
+  jbpf_agent_cpu: 0
+  jbpf_agent_policy: 0
+  jbpf_agent_priority: 0
+  jbpf_maint_cpu: 0
+  jbpf_maint_policy: 0
+  jbpf_maint_priority: 0

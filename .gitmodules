@@ -1,0 +1,9 @@
+[submodule "ocudu-jbpf"]
+	path = ocudu-jbpf
+	url = https://github.com/ucsdwcsng/open-ai-ran-ocudu-jbpf.git
+[submodule "jrtc-apps/jbpf_protobuf"]
+	path = jrtc-apps/jbpf_protobuf
+	url = https://github.com/microsoft/jbpf-protobuf.git
+[submodule "duranta-oai-ue/duranta-ue"]
+	path = duranta-oai-ue/duranta-ue
+	url = https://github.com/ucsdwcsng/open-ai-ran-duranta-ue.git

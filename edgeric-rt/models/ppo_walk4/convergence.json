@@ -1,0 +1,15 @@
+{
+ "iterations": 150,
+ "eff_min": 0.97,
+ "reached_at_iter": 15,
+ "held_from_iter": 129,
+ "ma10_eff_min_after": 0.9688,
+ "ma10_best_min_after": 89.89,
+ "share_iters_eff_ok_after": 0.919,
+ "mean_eff_after": 0.9917,
+ "mean_best_pct_after": 97.11,
+ "final_train_best_pct": 99.09,
+ "final_train_eff": 0.9973,
+ "eval_best_pct_min": 100.0,
+ "final_entropy": 0.251
+}

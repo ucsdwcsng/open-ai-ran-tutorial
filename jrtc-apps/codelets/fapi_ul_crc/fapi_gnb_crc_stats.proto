@@ -1,0 +1,20 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
+syntax = "proto2";
+
+message t_rnti_stats { 
+    required uint32 cell_id = 1;
+    required uint32 rnti = 2;
+    required uint32 l1_ta_min = 3;
+    required uint32 l1_ta_max = 4;
+    required uint32 l1_snr_min = 5;
+    required uint32 l1_snr_max = 6;
+    repeated uint32 l1_crc_ta_hist = 7;
+    repeated uint32 l1_crc_snr_hist = 8;
+}
+
+message crc_stats {
+    required uint64 timestamp = 1;
+    repeated t_rnti_stats stats = 2;
+}

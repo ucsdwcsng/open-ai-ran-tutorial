@@ -1,0 +1,196 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+codeletset_id: mac_stats
+
+codelet_descriptor:
+
+  - codelet_name: mac_stats_collect
+    codelet_path: ${JBPF_CODELETS}/mac/mac_stats_collect.o
+    hook_name: report_stats
+    priority: 1
+    out_io_channel:
+      - name: output_map_crc
+        forward_destination: DestinationNone
+        serde:
+          file_path: ${JBPF_CODELETS}/mac/mac_sched_crc_stats:crc_stats_serializer.so
+          protobuf:
+            package_path: ${JBPF_CODELETS}/mac/mac_sched_crc_stats.pb
+            msg_name: crc_stats
+      - name: output_map_bsr
+        forward_destination: DestinationNone
+        serde:
+          file_path: ${JBPF_CODELETS}/mac/mac_sched_bsr_stats:bsr_stats_serializer.so
+          protobuf:
+            package_path: ${JBPF_CODELETS}/mac/mac_sched_bsr_stats.pb
+            msg_name: bsr_stats
+      - name: output_map_phr
+        forward_destination: DestinationNone
+        serde:
+          file_path: ${JBPF_CODELETS}/mac/mac_sched_phr_stats:phr_stats_serializer.so
+          protobuf:
+            package_path: ${JBPF_CODELETS}/mac/mac_sched_phr_stats.pb
+            msg_name: phr_stats
+      - name: output_map_uci
+        forward_destination: DestinationNone
+        serde:
+          file_path: ${JBPF_CODELETS}/mac/mac_sched_uci_stats:uci_stats_serializer.so
+          protobuf:
+            package_path: ${JBPF_CODELETS}/mac/mac_sched_uci_stats.pb
+            msg_name: uci_stats
+
+  - codelet_name: mac_stats_collect_harq
+    codelet_path: ${JBPF_CODELETS}/mac/mac_stats_collect_harq.o
+    hook_name: report_stats
+    priority: 1
+    out_io_channel:
+      - name: output_map_dl_harq
+        forward_destination: DestinationNone
+        serde:
+          file_path: ${JBPF_CODELETS}/mac/mac_sched_harq_stats:harq_stats_serializer.so
+          protobuf:
+            package_path: ${JBPF_CODELETS}/mac/mac_sched_harq_stats.pb
+            msg_name: harq_stats
+      - name: output_map_ul_harq
+        forward_destination: DestinationNone
+        serde:
+          file_path: ${JBPF_CODELETS}/mac/mac_sched_harq_stats:harq_stats_serializer.so
+          protobuf:
+            package_path: ${JBPF_CODELETS}/mac/mac_sched_harq_stats.pb
+            msg_name: harq_stats
+
+
+
+  - codelet_name: mac_sched_crc_stats
+    codelet_path: ${JBPF_CODELETS}/mac/mac_sched_crc_stats.o
+    hook_name: mac_sched_crc_indication
+    priority: 1
+    linked_maps:
+      - map_name: stats_map_crc
+        linked_codelet_name: mac_stats_collect
+        linked_map_name: stats_map_crc
+      - map_name: crc_hash
+        linked_codelet_name: mac_stats_collect
+        linked_map_name: crc_hash
+      - map_name: crc_not_empty
+        linked_codelet_name: mac_stats_collect
+        linked_map_name: crc_not_empty
+
+  - codelet_name: mac_sched_bsr_stats
+    codelet_path: ${JBPF_CODELETS}/mac/mac_sched_bsr_stats.o
+    hook_name: mac_sched_ul_bsr_indication
+    priority: 1
+    linked_maps:
+      - map_name: stats_map_bsr
+        linked_codelet_name: mac_stats_collect
+        linked_map_name: stats_map_bsr
+      - map_name: bsr_hash
+        linked_codelet_name: mac_stats_collect
+        linked_map_name: bsr_hash
+      - map_name: bsr_not_empty
+        linked_codelet_name: mac_stats_collect
+        linked_map_name: bsr_not_empty
+
+  - codelet_name: mac_sched_phr_stats
+    codelet_path: ${JBPF_CODELETS}/mac/mac_sched_phr_stats.o
+    hook_name: mac_sched_ul_phr_indication
+    priority: 1
+    linked_maps:
+      - map_name: stats_map_phr
+        linked_codelet_name: mac_stats_collect
+        linked_map_name: stats_map_phr
+      - map_name: phr_hash
+        linked_codelet_name: mac_stats_collect
+        linked_map_name: phr_hash
+      - map_name: phr_not_empty
+        linked_codelet_name: mac_stats_collect
+        linked_map_name: phr_not_empty
+
+  - codelet_name: mac_sched_uci_pdu_stats
+    codelet_path: ${JBPF_CODELETS}/mac/mac_sched_uci_pdu_stats.o
+    hook_name: mac_sched_uci_indication
+    priority: 1
+    linked_maps:    
+      - map_name: stats_map_uci
+        linked_codelet_name: mac_stats_collect
+        linked_map_name: stats_map_uci
+      - map_name: uci_hash
+        linked_codelet_name: mac_stats_collect
+        linked_map_name: uci_hash
+      - map_name: uci_not_empty
+        linked_codelet_name: mac_stats_collect
+        linked_map_name: uci_not_empty
+
+  - codelet_name: mac_sched_dl_harq_stats
+    codelet_path: ${JBPF_CODELETS}/mac/mac_sched_dl_harq_stats.o
+    hook_name: mac_sched_harq_dl
+    priority: 1
+    linked_maps:    
+      - map_name: stats_map_dl_harq
+        linked_codelet_name: mac_stats_collect_harq
+        linked_map_name: stats_map_dl_harq
+      - map_name: dl_harq_hash
+        linked_codelet_name: mac_stats_collect_harq
+        linked_map_name: dl_harq_hash
+      - map_name: dl_harq_not_empty
+        linked_codelet_name: mac_stats_collect_harq
+        linked_map_name: dl_harq_not_empty
+
+
+  - codelet_name: mac_sched_ul_harq_stats
+    codelet_path: ${JBPF_CODELETS}/mac/mac_sched_ul_harq_stats.o
+    hook_name: mac_sched_harq_ul
+    priority: 1
+    linked_maps:    
+      - map_name: stats_map_ul_harq
+        linked_codelet_name: mac_stats_collect_harq
+        linked_map_name: stats_map_ul_harq
+      - map_name: ul_harq_hash
+        linked_codelet_name: mac_stats_collect_harq
+        linked_map_name: ul_harq_hash
+      - map_name: ul_harq_not_empty
+        linked_codelet_name: mac_stats_collect_harq
+        linked_map_name: ul_harq_not_empty
+
+
+
+
+  - codelet_name: mac_sched_ue_deletion
+    codelet_path: ${JBPF_CODELETS}/mac/mac_sched_ue_deletion.o
+    hook_name: mac_sched_ue_deletion
+    priority: 1
+    linked_maps:
+      - map_name: stats_map_crc
+        linked_codelet_name: mac_stats_collect
+        linked_map_name: stats_map_crc
+      - map_name: crc_hash
+        linked_codelet_name: mac_stats_collect
+        linked_map_name: crc_hash
+
+      - map_name: stats_map_bsr
+        linked_codelet_name: mac_stats_collect
+        linked_map_name: stats_map_bsr
+      - map_name: bsr_hash
+        linked_codelet_name: mac_stats_collect
+        linked_map_name: bsr_hash
+
+      - map_name: stats_map_uci
+        linked_codelet_name: mac_stats_collect
+        linked_map_name: stats_map_uci
+      - map_name: uci_hash
+        linked_codelet_name: mac_stats_collect
+        linked_map_name: uci_hash
+
+      - map_name: stats_map_dl_harq
+        linked_codelet_name: mac_stats_collect_harq
+        linked_map_name: stats_map_dl_harq
+      - map_name: dl_harq_hash
+        linked_codelet_name: mac_stats_collect_harq
+        linked_map_name: dl_harq_hash
+
+      - map_name: stats_map_ul_harq
+        linked_codelet_name: mac_stats_collect_harq
+        linked_map_name: stats_map_ul_harq
+      - map_name: ul_harq_hash
+        linked_codelet_name: mac_stats_collect_harq
+        linked_map_name: ul_harq_hash

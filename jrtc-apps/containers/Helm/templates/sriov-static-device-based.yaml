@@ -1,0 +1,62 @@
+
+---
+apiVersion: "k8s.cni.cncf.io/v1"
+kind: NetworkAttachmentDefinition
+metadata:
+  name: srs-sriov-cu
+  annotations:
+    k8s.v1.cni.cncf.io/resourceName: "{{ .Values.sriov.resourceName }}"
+spec:
+  config: |
+    {
+      "cniVersion": "{{ .Values.sriov.cniVersion }}",
+      "type": "sriov",
+      "mode": "bridge",
+      "ipam": {
+        "type": "static",
+        "addresses": [
+          {
+           "address": "{{ .Values.sriov.cucp_ip }}/{{ .Values.sriov.cucp_prefix }}",
+           "gateway": "{{ .Values.sriov.cucp_gateway }}"
+          },
+          {
+           "address": "{{ .Values.sriov.cuup_ip }}/{{ .Values.sriov.cuup_prefix }}",
+           "gateway": "{{ .Values.sriov.cuup_gateway }}"
+          }
+        ]
+      }
+    }
+
+
+
+{{ $vLAN := .Values.sriov.fh_vlan}}
+{{ $cni_version := .Values.sriov.cniVersion}}
+
+# Add VF for each DU
+{{- range $ran_name, $values := .Values.duConfigs }}
+  
+
+# And for each cell
+{{range $idx_c, $cell := $values.cells}}
+
+---
+apiVersion: "k8s.cni.cncf.io/v1"
+kind: NetworkAttachmentDefinition
+metadata:
+  name: "srs-{{ $ran_name }}-sriov-fh-instance-{{ $idx_c }}"
+  annotations:
+    k8s.v1.cni.cncf.io/resourceName: {{ $cell.ruDPDKResource }}
+spec:
+  # We should not set VLAN here, as it is set by SRS binaries, 
+  # and otherwise SRS will not work properly.
+  config: |
+    {
+      "cniVersion": "{{ $cni_version }}",
+      "type": "sriov",
+      "mac": "{{ $cell.ruLocalMAC }}"
+    }
+
+{{end}}
+{{- end }}
+
+

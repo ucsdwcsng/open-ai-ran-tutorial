@@ -1,0 +1,95 @@
+# This configuration file example shows how to configure the srsRAN Project gNB to allow srsUE to connect to it. 
+# This specific example uses ZMQ in place of a USRP for the RF-frontend, and creates an FDD cell with 10 MHz bandwidth. 
+# To run the srsRAN Project gNB with this config, use the following command: 
+#   sudo ./gnb -c gnb_zmq.yaml
+
+# amf:
+#   addr: 127.0.0.100                  # The address or hostname of the AMF.
+#   bind_addr: 127.0.0.1           # A local IP that the gNB binds to for traffic from the AMF.
+# device_args: tx_port=tcp://127.0.0.1:2101,rx_port=tcp://127.0.0.1:2100,base_srate=11.52
+ru_sdr:
+  device_driver: zmq                # The RF driver name.
+  # device_args: tx_port=tcp://127.0.0.1:2101,rx_port=tcp://127.0.0.1:2100,base_srate=11.52e6 # Optionally pass arguments to the selected RF driver.
+  device_args: tx_port=tcp://127.0.0.1:2101,rx_port=tcp://127.0.0.1:2100,base_srate=23.04e6
+  srate: 23.04                      # RF sample rate might need to be adjusted according to selected bandwidth.
+  tx_gain: 75                       # Transmit gain of the RF might need to adjusted to the given situation.
+  rx_gain: 75                       # Receive gain of the RF might need to adjusted to the given situation.
+
+cell_cfg:
+  dl_arfcn: 368500                  # ARFCN of the downlink carrier (center frequency).
+  band: 3                           # The NR band.
+  channel_bandwidth_MHz: 20         # Bandwith in MHz. Number of PRBs will be automatically derived.
+  common_scs: 15                    # Subcarrier spacing in kHz used for data.
+  plmn: "99970" #"00101"                     # PLMN broadcasted by the gNB.
+  tac: 1 #7                            # Tracking area code (needs to match the core configuration).
+  pdcch:
+    common:
+      ss0_index: 0                  # Set search space zero index to match srsUE capabilities
+      coreset0_index: 12           # Set search CORESET Zero index to match srsUE capabilities (20 MHz)
+    dedicated:
+      ss2_type: common              # Search Space type, has to be set to common
+      dci_format_0_1_and_1_1: false # Set correct DCI format (fallback)
+  prach:
+    prach_config_index: 1           # Sets PRACH config to match what is expected by srsUE
+    # prach_config_index: 1           # Sets PRACH config to match what is expected by srsUE
+    total_nof_ra_preambles: 64      # Sets number of available PRACH preambles
+    nof_ssb_per_ro: 1               # Sets the number of SSBs per RACH occasion.
+    nof_cb_preambles_per_ssb: 64    # Sets the number of contention based preambles per SSB.
+  pdsch:
+#    max_ue_mcs: 5                   # Cap DL MCS (robust) — srsUE-4G NR decoder drops high-MCS PDSCH over ZMQ   # DL MCS uncapped for the capacity + L4S/AQM experiments (srsUE-4G decodes high MCS over the ideal ZMQ channel); re-enable this line for the low-rate regime
+  pusch:
+    max_ue_mcs: 10
+  sched_expert_cfg:
+    policy_sched_cfg:
+      pf_sched:
+        pf_sched_fairness_coeff: 1.0
+
+cu_cp:
+  inactivity_timer: 7200            # Sets the UE/PDU Session/DRB inactivity timer to 7200 seconds. Supported: [1 - 7200].
+  
+  amf:
+    addr: open5gs-amf-ngap.open5gs.svc.cluster.local #10.53.1.2 #127.0.0.100                  # The address or hostname of the AMF.
+    port: 38412
+    bind_addr: 0.0.0.0 #10.42.0.10 #10.53.1.3 #127.0.0.1 
+    supported_tracking_areas:
+      - tac: 1 #7
+        plmn_list:
+          - plmn: "99970" #"00101"
+            tai_slice_support_list:
+              - sst: 1
+                # sd: 162
+
+cu_up:
+  upf:
+    bind_addr: 10.42.0.91   # gNB pod IP (N3/GTP-U) so UPF can reach it; default was localhost -> data plane dead
+
+jbpf:
+  jbpf_run_path: "/tmp"
+  jbpf_namespace: "jbpf"
+  jbpf_enable_ipc: 1 #1
+  jbpf_standalone_io_out_ip: "127.0.0.1"
+  jbpf_standalone_io_out_port: 20788
+  jbpf_standalone_io_in_port: 30400
+  jbpf_standalone_io_policy: 0
+  jbpf_standalone_io_priority: 0
+  jbpf_io_mem_size_mb: 1024
+  jbpf_ipc_mem_name: "jrt_controller" # changed
+  jbpf_enable_lcm_ipc: 1
+  jbpf_lcm_ipc_name: "jbpf_lcm_ipc"
+  jbpf_agent_cpu: 0
+  jbpf_agent_policy: 1
+  jbpf_agent_priority: 30
+  jbpf_maint_cpu: 0
+  jbpf_maint_policy: 0
+  jbpf_maint_priority: 0
+
+log:
+  filename: /tmp/gnb.log            # Path of the log file.
+  all_level: info                   # Logging level applied to all layers.
+  hex_max_size: 0
+
+pcap:
+  mac_enable: false                 # Set to true to enable MAC-layer PCAPs.
+  mac_filename: /tmp/gnb_mac.pcap   # Path where the MAC PCAP is stored.
+  ngap_enable: false                # Set to true to enable NGAP PCAPs.
+  ngap_filename: /tmp/gnb_ngap.pcap # Path where the NGAP PCAP is stored.

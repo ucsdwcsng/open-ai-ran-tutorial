@@ -1,0 +1,50 @@
+{
+  "duConfigs": {
+    "du1": {
+      "cells": {
+        "cell1": {
+          "physicalCellID": 100,
+          "ruDLArfcn": 630684,
+          "ruBandwidth": 40,
+          "ruLocalMAC": "aa:bb:cc:dd:ee:ff",
+          "ruRemoteMAC": "e2:53:8d:8f:a4:6b",
+          "ruVLAN": 10,
+          "prachPortID": [4, 5, 6, 7],
+          "dlPortID": [0, 1, 2, 3],
+          "ulPortID": [0, 1, 2, 3],
+          "ruDPDKResource": "intel.com/sriov_netdevice"
+        }
+      }
+    }
+  },
+  "ngcParams": {
+    "coreIP": "192.168.100.10"
+  },
+  "sriov": {
+    "cuup_ip": "192.168.101.20",
+    "cucp_ip": "192.168.101.21"
+  },
+  "cell_cfg": {
+    "plmn": "99999",
+    "tac": 7
+  },
+  "system": {
+    "eal_cpu_args": "--lcores (0-1)@(1-30)",
+    "taskset_cpu_args": "1-30"
+  },
+  "metrics": {
+    "autostart_stdout_metrics": true,
+    "metrics_period_ms": 1000
+  },
+  "log": {
+    "all_level": "debug",
+    "filename": "./gnb_updated.log"
+  },
+  "jbpf": {
+    "enabled": true,
+    "cfg": {
+      "log_level": "info",
+      "hook_points": ["ul_pdcp", "dl_pdcp"]
+    }
+  }
+} 

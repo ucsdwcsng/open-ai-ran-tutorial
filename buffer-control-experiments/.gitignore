@@ -1,0 +1,6 @@
+# Generated at run time by the scripts in this directory; not committed.
+results/
+.bufcap_state
+.badchan_state
+.bufcap_events.jsonl
+.badchan_events.jsonl

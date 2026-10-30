@@ -1,0 +1,41 @@
+Subject: [PATCH] fix(jbpf): anchor .gitignore build rule so ck templates are tracked
+
+The unanchored `build` rule in external/jbpf/.gitignore matches at every
+level, so it excludes 3p/ck/build/ -- Concurrency Kit's 15 configure input
+templates, which are source, not build output. In this repo that directory
+is missing entirely, so ./build.sh cannot succeed from a clean clone.
+
+Without the templates ck's configure exits 0 having written a zero-byte
+ck.build, ALL_LIBS comes out empty, make reports "Nothing to be done", and
+the build fails minutes later somewhere unrelated:
+
+    cp: cannot stat 'src/libck.so': No such file or directory
+    make: *** [Makefile:51: install-so] Error 1
+
+Anchoring to /build preserves the original intent (ignore jbpf's own
+top-level CMake output directory) and is sufficient on its own:
+3p/ck/.gitignore already ignores exactly the five generated files
+(build/ck.build, build/ck.pc, build/ck.spec, build/Makefile,
+build/regressions.build) while tracking the templates. No new ignore
+entries are needed.
+
+After applying, restore the 15 templates from ck 0.7.1 and commit them:
+
+    git add -A external/jbpf/3p/ck/build     # 15 files, generated ones stay ignored
+    git commit
+
+Verify with:
+
+    git ls-files external/jbpf/3p/ck/build | wc -l    # expect 15
+
+--- a/external/jbpf/.gitignore
++++ b/external/jbpf/.gitignore
+@@ -1,7 +1,7 @@
+ *.o
+ *~
+ *.pyc
+-build
++/build
+ debug_output.txt
+ *.tmp
+ helper_build_files/symver.map

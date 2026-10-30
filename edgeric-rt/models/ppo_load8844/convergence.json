@@ -1,0 +1,12 @@
+{
+ "objective": "load",
+ "iterations": 150,
+ "final_train_mbps": 17.84,
+ "frac": 0.97,
+ "reached_at_iter": 12,
+ "first10_mean_mbps": 17.26,
+ "ma10_min_after": 16.55,
+ "ma10_max_after": 21.8,
+ "eval_mbps_last5_mean": 22.47,
+ "final_entropy": 0.482
+}

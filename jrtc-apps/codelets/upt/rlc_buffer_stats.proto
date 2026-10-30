@@ -1,0 +1,24 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+syntax = "proto2";
+
+// RLC DL SDU-queue occupancy, sampled on enqueue and dequeue events, bucketed.
+message t_rlc_buffer_item {
+   required uint32 du_ue_index      = 1;
+   required uint32 is_srb           = 2;
+   required uint32 rb_id            = 3;
+   required uint32 samples          = 4;
+   required uint32 queue_bytes_last = 5;   // occupancy at bucket close
+   required uint32 queue_bytes_max  = 6;
+   required uint64 queue_bytes_sum  = 7;   // /samples => mean occupancy
+   required uint32 queue_pkts_last  = 8;
+   required uint32 queue_pkts_max   = 9;
+   required uint32 enq_pkts         = 10;  // enqueued this bucket
+   required uint32 deq_pkts         = 11;  // dequeued this bucket
+}
+
+message rlc_buffer_stats {
+   required uint64 timestamp = 1;
+   required uint64 bucket_id = 2;
+   repeated t_rlc_buffer_item stats = 3;
+}

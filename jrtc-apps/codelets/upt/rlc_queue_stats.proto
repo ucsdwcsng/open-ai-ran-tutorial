@@ -1,0 +1,21 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+syntax = "proto2";
+
+// RLC DL queuing latency (SDU arrival -> start of transmission), bucketed.
+message t_rlc_queue_item {
+   required uint32 du_ue_index    = 1;
+   required uint32 is_srb         = 2;
+   required uint32 rb_id          = 3;
+   required uint32 count          = 4;   // SDUs measured in this bucket
+   required uint64 latency_sum_ns = 5;
+   required uint64 latency_min_ns = 6;
+   required uint64 latency_max_ns = 7;
+   required uint32 retx_count     = 8;   // of which were retransmissions
+}
+
+message rlc_queue_stats {
+   required uint64 timestamp = 1;
+   required uint64 bucket_id = 2;
+   repeated t_rlc_queue_item stats = 3;
+}

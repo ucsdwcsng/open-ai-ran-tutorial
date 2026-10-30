@@ -1,0 +1,21 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
+syntax = "proto2";
+
+
+message t_bsr_stats {
+   required uint32 du_ue_index = 1;
+   required uint32 cnt = 2;
+   required uint64 bytes = 3;
+}
+
+message bsr_stats {
+   required uint64 timestamp = 1;
+   repeated t_bsr_stats stats = 2;
+}
+
+
+
+
+

@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../../tools/schemas/jrtc-ctl..schema.json
+#
+# EdgeRIC-RT: per-TTI synchronized DL scheduling. Loads the edgeric_rt codeletset (rt_report on
+# mac_sched_slot_report, rt_ctrl on mac_sched_slot_ctrl) and the rt_bridge xApp, which moves the
+# per-TTI reports and actions between the codelets and the muApps in the edgeric container.
+#
+#   jrtc-ctl load -c /apps/edgeric_rt/rt_deployment.yaml      (inside jrtc-0, with fwd30450.py running)
+#   jrtc-ctl unload -c /apps/edgeric_rt/rt_deployment.yaml
+
+name: edgeric_rt
+
+decoder:
+  - type: decodergrpc
+    host: jrtc-decoder.ran.svc.cluster.local
+    port: 20789
+
+app:
+  - name: rt_bridge
+    path: ${JRTC_APPS}/edgeric_rt/rt_bridge_app.py
+    type: python
+    host: jrtc-service.ran.svc.cluster.local
+    port: 3001
+
+jbpf:
+  device:
+    - id: 1
+      host: srs-gnb-du1-proxy.ran.svc.cluster.local
+      port: 30450
+
+  codelet_set:
+    - device: 1
+      config: ${JBPF_CODELETS}/edgeric_rt/edgeric_rt.yaml

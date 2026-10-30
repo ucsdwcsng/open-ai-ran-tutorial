@@ -1,0 +1,29 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
+syntax = "proto2";
+
+message ngap_ctx {
+    required uint32 cucp_ue_index = 1;
+    optional uint32 ran_ue_id = 2;
+    optional uint32 amf_ue_id = 3;
+
+}
+
+message ngap_procedure_started {
+    required uint64 timestamp = 1;
+    required ngap_ctx ue_ctx = 2;
+    required uint32 procedure = 3;
+}
+ 
+ message ngap_procedure_completed {
+    required uint64 timestamp = 1;
+    required ngap_ctx ue_ctx = 2;
+    required uint32 procedure = 3;
+    required uint32 success = 4;
+}
+
+message ngap_reset {
+    required uint64 timestamp = 1;
+    optional ngap_ctx ue_ctx = 2;
+}

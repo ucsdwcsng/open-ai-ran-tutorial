@@ -1,0 +1,3 @@
+jbpf_hook_perf.hist                max_count:64
+jbpf_hook_perf.hook_name           max_size:32
+jbpf_out_perf_list.hook_perf       max_count:128

@@ -1,0 +1,71 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+codeletset_id: rrc
+
+codelet_descriptor:
+
+  - codelet_name: rrc_ue_add
+    codelet_path: ${JBPF_CODELETS}/rrc/rrc_ue_add.o
+    hook_name: rrc_ue_add
+    priority: 1
+    out_io_channel:
+      - name: rrc_ue_add_output_map
+        forward_destination: DestinationNone
+        serde:
+          file_path: ${JBPF_CODELETS}/rrc/rrc_ue_add:rrc_ue_add_serializer.so
+          protobuf:
+            package_path: ${JBPF_CODELETS}/rrc/rrc_ue_add.pb
+            msg_name: rrc_ue_add
+
+  - codelet_name: rrc_ue_procedure
+    codelet_path: ${JBPF_CODELETS}/rrc/rrc_ue_procedure.o
+    hook_name: rrc_ue_procedure_completed
+    priority: 1
+    out_io_channel:
+      - name: rrc_ue_procedure_output_map
+        forward_destination: DestinationNone
+        serde:
+          file_path: ${JBPF_CODELETS}/rrc/rrc_ue_procedure:rrc_ue_procedure_serializer.so
+          protobuf:
+            package_path: ${JBPF_CODELETS}/rrc/rrc_ue_procedure.pb
+            msg_name: rrc_ue_procedure
+
+  - codelet_name: rrc_ue_remove
+    codelet_path: ${JBPF_CODELETS}/rrc/rrc_ue_remove.o
+    hook_name: rrc_ue_remove
+    priority: 1
+    out_io_channel:
+      - name: rrc_ue_remove_output_map
+        forward_destination: DestinationNone
+        serde:
+          file_path: ${JBPF_CODELETS}/rrc/rrc_ue_remove:rrc_ue_remove_serializer.so
+          protobuf:
+            package_path: ${JBPF_CODELETS}/rrc/rrc_ue_remove.pb
+            msg_name: rrc_ue_remove
+
+  - codelet_name: rrc_ue_update_context
+    codelet_path: ${JBPF_CODELETS}/rrc/rrc_ue_update_context.o
+    hook_name: rrc_ue_update_context
+    priority: 1
+    out_io_channel:
+      - name: rrc_ue_update_context_output_map
+        forward_destination: DestinationNone
+        serde:
+          file_path: ${JBPF_CODELETS}/rrc/rrc_ue_update_context:rrc_ue_update_context_serializer.so
+          protobuf:
+            package_path: ${JBPF_CODELETS}/rrc/rrc_ue_update_context.pb
+            msg_name: rrc_ue_update_context
+
+  - codelet_name: rrc_ue_update_id
+    codelet_path: ${JBPF_CODELETS}/rrc/rrc_ue_update_id.o
+    hook_name: rrc_ue_update_id
+    priority: 1
+    out_io_channel:
+      - name: rrc_ue_update_id_output_map
+        forward_destination: DestinationNone
+        serde:
+          file_path: ${JBPF_CODELETS}/rrc/rrc_ue_update_id:rrc_ue_update_id_serializer.so
+          protobuf:
+            package_path: ${JBPF_CODELETS}/rrc/rrc_ue_update_id.pb
+            msg_name: rrc_ue_update_id

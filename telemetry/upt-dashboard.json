@@ -1,0 +1,2324 @@
+{
+  "uid": "upt-userplane",
+  "title": "RAN User-Plane Telemetry (per-packet)",
+  "tags": [
+    "ran",
+    "jbpf",
+    "upt"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "500ms",
+  "time": {
+    "from": "now-5m",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "500ms",
+      "1s",
+      "2s",
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m"
+    ]
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "bearer",
+        "label": "Bearer",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "victoriametrics"
+        },
+        "definition": "label_values(upt_rlc_buffer_bytes,bearer)",
+        "query": {
+          "qryType": 1,
+          "query": "label_values(upt_rlc_buffer_bytes,bearer)",
+          "refId": "bearer-variable"
+        },
+        "current": {
+          "selected": true,
+          "text": [
+            "DRB1"
+          ],
+          "value": [
+            "DRB1"
+          ]
+        },
+        "includeAll": true,
+        "multi": true,
+        "refresh": 2
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 25,
+      "type": "row",
+      "title": "UE identity (core to gNB)",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 26,
+      "type": "table",
+      "title": "UE identity: core (IMSI, IP) to gNB (NGAP, CU-CP, CU-UP, DU, C-RNTI)",
+      "description": "One row per attached UE. IMSI and IP come from the core (AMF / SMF), the rest from the gNB's own UE contexts (ue_contexts and ngap codelets at attach); the two are joined on the NGAP UE IDs. Published as ue_ids by the dashboard xApp, which must be loaded before the UEs attach (setup_zmq_chan_demo.sh --telemetry). UE = the IMSI's subscriber number.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (n, imsi, ip, amf_ue_ngap_id, ran_ue_ngap_id, cucp, cuup, du, pci, rnti) (last_over_time(ue_ids[10s]))",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "legendFormat": ""
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Value": true
+            },
+            "indexByName": {
+              "n": 0,
+              "imsi": 1,
+              "ip": 2,
+              "amf_ue_ngap_id": 3,
+              "ran_ue_ngap_id": 4,
+              "cucp": 5,
+              "cuup": 6,
+              "du": 7,
+              "pci": 8,
+              "rnti": 9
+            },
+            "renameByName": {
+              "n": "UE",
+              "imsi": "IMSI",
+              "ip": "IP",
+              "amf_ue_ngap_id": "AMF UE NGAP ID",
+              "ran_ue_ngap_id": "RAN UE NGAP ID",
+              "cucp": "CU-CP UE index",
+              "cuup": "CU-UP UE index",
+              "du": "DU UE index",
+              "pci": "PCI",
+              "rnti": "C-RNTI"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "UE"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "1": {
+                        "color": "#3987e5",
+                        "index": 0
+                      },
+                      "2": {
+                        "color": "#d95926",
+                        "index": 1
+                      },
+                      "3": {
+                        "color": "#199e70",
+                        "index": 2
+                      },
+                      "4": {
+                        "color": "#c98500",
+                        "index": 3
+                      },
+                      "5": {
+                        "color": "#d55181",
+                        "index": 4
+                      },
+                      "6": {
+                        "color": "#008300",
+                        "index": 5
+                      },
+                      "7": {
+                        "color": "#9085e9",
+                        "index": 6
+                      },
+                      "8": {
+                        "color": "#e66767",
+                        "index": 7
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 60
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "UE",
+            "desc": false
+          }
+        ],
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
+      "id": 20,
+      "type": "row",
+      "title": "Radio / MAC (dashboard xApp)",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 7
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 21,
+      "type": "timeseries",
+      "title": "DL CQI",
+      "description": "The UE's reported wideband CQI, as the scheduler used it for each new DL transmission (DL HARQ stats). Per-UE average of each ~1 s report; min and max are in the table. Written by the dashboard xApp (jrtc_apps/dashboard), so empty unless it is loaded.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 0,
+        "y": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "min": 0,
+          "max": 15,
+          "decimals": 1,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*(min|max).*"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    8,
+                    4
+                  ],
+                  "fill": "dash"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "MIN"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "MAX"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 1 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 2 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 3 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 4 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c98500"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 5 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 6 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#008300"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 7 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 8 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e66767"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(label_replace(mac_dl_cqi_avg, \"du\", \"$1\", \"ue\", \"(.*)\") * on(du) group_left(n) max by (du, n) (last_over_time(ue_ids[10s]))) or on(ue) label_replace(mac_dl_cqi_avg, \"n\", \"du$1\", \"ue\", \"(.*)\")",
+          "legendFormat": "UE {{n}} avg"
+        },
+        {
+          "refId": "MIN",
+          "expr": "(label_replace(mac_dl_cqi_min, \"du\", \"$1\", \"ue\", \"(.*)\") * on(du) group_left(n) max by (du, n) (last_over_time(ue_ids[10s]))) or on(ue) label_replace(mac_dl_cqi_min, \"n\", \"du$1\", \"ue\", \"(.*)\")",
+          "legendFormat": "UE {{n}} min"
+        },
+        {
+          "refId": "MAX",
+          "expr": "(label_replace(mac_dl_cqi_max, \"du\", \"$1\", \"ue\", \"(.*)\") * on(du) group_left(n) max by (du, n) (last_over_time(ue_ids[10s]))) or on(ue) label_replace(mac_dl_cqi_max, \"n\", \"du$1\", \"ue\", \"(.*)\")",
+          "legendFormat": "UE {{n}} max"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "type": "timeseries",
+      "title": "UL SNR",
+      "description": "PUSCH SINR the gNB measures on each UL transmission, in whole dB. Per-UE average of each ~1 s report; min and max are in the table. Written by the dashboard xApp (jrtc_apps/dashboard), so empty unless it is loaded.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 8,
+        "y": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dB",
+          "decimals": 1,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*(min|max).*"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    8,
+                    4
+                  ],
+                  "fill": "dash"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "MIN"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "MAX"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 1 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 2 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 3 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 4 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c98500"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 5 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 6 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#008300"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 7 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 8 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e66767"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(label_replace(mac_ul_snr_avg_db, \"du\", \"$1\", \"ue\", \"(.*)\") * on(du) group_left(n) max by (du, n) (last_over_time(ue_ids[10s]))) or on(ue) label_replace(mac_ul_snr_avg_db, \"n\", \"du$1\", \"ue\", \"(.*)\")",
+          "legendFormat": "UE {{n}} avg"
+        },
+        {
+          "refId": "MIN",
+          "expr": "(label_replace(mac_ul_snr_min_db, \"du\", \"$1\", \"ue\", \"(.*)\") * on(du) group_left(n) max by (du, n) (last_over_time(ue_ids[10s]))) or on(ue) label_replace(mac_ul_snr_min_db, \"n\", \"du$1\", \"ue\", \"(.*)\")",
+          "legendFormat": "UE {{n}} min"
+        },
+        {
+          "refId": "MAX",
+          "expr": "(label_replace(mac_ul_snr_max_db, \"du\", \"$1\", \"ue\", \"(.*)\") * on(du) group_left(n) max by (du, n) (last_over_time(ue_ids[10s]))) or on(ue) label_replace(mac_ul_snr_max_db, \"n\", \"du$1\", \"ue\", \"(.*)\")",
+          "legendFormat": "UE {{n}} max"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "type": "timeseries",
+      "title": "DL throughput (MAC)",
+      "description": "DL bit rate the MAC scheduler delivers to each UE: the bytes of new transport blocks, less those dropped after the last HARQ retransmission, per ~1 s DL HARQ report. Total is the sum over the UEs. Written by the dashboard xApp (jrtc_apps/dashboard), so empty unless it is loaded.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 16,
+        "y": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Mbits",
+          "min": 0,
+          "decimals": 1,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 1$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 2$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 3$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 4$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c98500"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 5$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 6$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#008300"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 7$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 8$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e66767"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8e959e"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    8,
+                    4
+                  ],
+                  "fill": "dash"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(label_replace(mac_dl_tput_mbps, \"du\", \"$1\", \"ue\", \"(.*)\") * on(du) group_left(n) max by (du, n) (last_over_time(ue_ids[10s]))) or on(ue) label_replace(mac_dl_tput_mbps, \"n\", \"du$1\", \"ue\", \"(.*)\")",
+          "legendFormat": "UE {{n}}"
+        },
+        {
+          "refId": "TOTAL",
+          "expr": "sum(mac_dl_tput_mbps)",
+          "legendFormat": "Total"
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "type": "row",
+      "title": "RLC / user plane (upt xApp)",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 17
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "GTP Arrival Rate",
+      "description": "DL user-plane arrival into the gNB, measured per packet at PDCP ingress (first per-packet DL hook available; no GTP-U hook exists in this srsRAN build). Correlates with TCP throughput.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 0,
+        "y": 18
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Mbits",
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 1 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 2 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 3 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 4 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c98500"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 5 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 6 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#008300"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 7 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 8 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e66767"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(label_replace(upt_gtp_arrival_mbps{bearer=~\"$bearer\"}, \"cuup\", \"$1\", \"ue\", \"(.*)\") * on(cuup) group_left(n) max by (cuup, n) (last_over_time(ue_ids[10s]))) or on(ue) label_replace(upt_gtp_arrival_mbps{bearer=~\"$bearer\"}, \"n\", \"cu$1\", \"ue\", \"(.*)\")",
+          "legendFormat": "UE {{n}} {{bearer}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "RLC Queuing Latency",
+      "description": "Per-SDU time from arrival at RLC to start of transmission (srsRAN latency_ns), averaged per ~134 ms bucket. Dashed = per-bucket max. Correlates with TCP RTT.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 8,
+        "y": 18
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*max.*"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    8,
+                    4
+                  ],
+                  "fill": "dash"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "P95"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "P99"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 1 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 2 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 3 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 4 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c98500"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 5 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 6 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#008300"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 7 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 8 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e66767"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(label_replace(upt_rlc_queue_latency_ms{bearer=~\"$bearer\"}, \"du\", \"$1\", \"ue\", \"(.*)\") * on(du) group_left(n) max by (du, n) (last_over_time(ue_ids[10s]))) or on(ue) label_replace(upt_rlc_queue_latency_ms{bearer=~\"$bearer\"}, \"n\", \"du$1\", \"ue\", \"(.*)\")",
+          "legendFormat": "UE {{n}} {{bearer}} avg"
+        },
+        {
+          "refId": "P95",
+          "expr": "(label_replace(upt_rlc_pkt_lat_p95_ms, \"du\", \"$1\", \"ue\", \"(.*)\") * on(du) group_left(n) max by (du, n) (last_over_time(ue_ids[10s]))) or on(ue) label_replace(upt_rlc_pkt_lat_p95_ms, \"n\", \"du$1\", \"ue\", \"(.*)\")",
+          "legendFormat": "UE {{n}} p95"
+        },
+        {
+          "refId": "P99",
+          "expr": "(label_replace(upt_rlc_pkt_lat_p99_ms, \"du\", \"$1\", \"ue\", \"(.*)\") * on(du) group_left(n) max by (du, n) (last_over_time(ue_ids[10s]))) or on(ue) label_replace(upt_rlc_pkt_lat_p99_ms, \"n\", \"du$1\", \"ue\", \"(.*)\")",
+          "legendFormat": "UE {{n}} p99"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "RLC Buffer Occupancy",
+      "description": "Live RLC SDU-queue depth sampled on every enqueue/dequeue (srsRAN sdu_queue_info), reported per ~134 ms bucket. Correlates with TCP bytes-in-flight / cwnd.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 16,
+        "y": 18
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*max.*"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    8,
+                    4
+                  ],
+                  "fill": "dash"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "LIM"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 1 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 2 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 3 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 4 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c98500"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 5 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 6 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#008300"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 7 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 8 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e66767"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(label_replace(upt_rlc_buffer_bytes_avg{bearer=~\"$bearer\"}, \"du\", \"$1\", \"ue\", \"(.*)\") * on(du) group_left(n) max by (du, n) (last_over_time(ue_ids[10s]))) or on(ue) label_replace(upt_rlc_buffer_bytes_avg{bearer=~\"$bearer\"}, \"n\", \"du$1\", \"ue\", \"(.*)\")",
+          "legendFormat": "UE {{n}} {{bearer}} avg"
+        },
+        {
+          "refId": "B",
+          "expr": "(label_replace(upt_rlc_buffer_bytes_max{bearer=~\"$bearer\"}, \"du\", \"$1\", \"ue\", \"(.*)\") * on(du) group_left(n) max by (du, n) (last_over_time(ue_ids[10s]))) or on(ue) label_replace(upt_rlc_buffer_bytes_max{bearer=~\"$bearer\"}, \"n\", \"du$1\", \"ue\", \"(.*)\")",
+          "legendFormat": "UE {{n}} {{bearer}} max"
+        },
+        {
+          "refId": "LIM",
+          "expr": "upt_ctrl_byte_limit",
+          "legendFormat": "byte_limit setpoint"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "row",
+      "title": "TCP / application metrics (tcpdump on UPF ogstun)",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 27
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "TCP Throughput",
+      "description": "DL goodput per UE, measured as bytes newly ACKed per bucket on the server->UE flow. Correlates with GTP Arrival Rate above (arrival is higher: it counts every byte pushed into PDCP including TCP retransmissions, throughput counts only ACKed bytes).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 0,
+        "y": 28
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Mbits",
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 1 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 2 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 3 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 4 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c98500"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 5 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 6 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#008300"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 7 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 8 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e66767"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(tcp_throughput_mbps * on(ip) group_left(n) max by (ip, n) (last_over_time(ue_ids[10s]))) or on(ip) label_replace(tcp_throughput_mbps, \"n\", \"$1\", \"ip\", \"(.*)\")",
+          "legendFormat": "UE {{n}} ({{ip}})"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "TCP RTT",
+      "description": "Round-trip time from data segment to covering ACK, on the same bucket grid as the RAN panels. Should track RLC Queuing Latency directly above - that queue is the dominant term.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 8,
+        "y": 28
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*max.*"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    8,
+                    4
+                  ],
+                  "fill": "dash"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 1 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 2 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 3 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 4 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c98500"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 5 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 6 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#008300"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 7 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 8 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e66767"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(tcp_rtt_ms * on(ip) group_left(n) max by (ip, n) (last_over_time(ue_ids[10s]))) or on(ip) label_replace(tcp_rtt_ms, \"n\", \"$1\", \"ip\", \"(.*)\")",
+          "legendFormat": "UE {{n}} avg"
+        },
+        {
+          "refId": "B",
+          "expr": "(tcp_rtt_max_ms * on(ip) group_left(n) max by (ip, n) (last_over_time(ue_ids[10s]))) or on(ip) label_replace(tcp_rtt_max_ms, \"n\", \"$1\", \"ip\", \"(.*)\")",
+          "legendFormat": "UE {{n}} max"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "TCP Bytes in Flight",
+      "description": "highest_seq_sent - highest_ack_received, i.e. unacknowledged data (a proxy for cwnd). Correlates with RLC Buffer Occupancy above; it runs somewhat higher because in-flight also covers bytes queued in PDCP/GTP-U and on the wire, not just the RLC SDU queue.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 16,
+        "y": 28
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*max.*"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    8,
+                    4
+                  ],
+                  "fill": "dash"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 1 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 2 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 3 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 4 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c98500"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 5 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 6 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#008300"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 7 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 8 .*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e66767"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(tcp_bytes_in_flight * on(ip) group_left(n) max by (ip, n) (last_over_time(ue_ids[10s]))) or on(ip) label_replace(tcp_bytes_in_flight, \"n\", \"$1\", \"ip\", \"(.*)\")",
+          "legendFormat": "UE {{n}} in-flight"
+        },
+        {
+          "refId": "B",
+          "expr": "(tcp_bytes_in_flight_max * on(ip) group_left(n) max by (ip, n) (last_over_time(ue_ids[10s]))) or on(ip) label_replace(tcp_bytes_in_flight_max, \"n\", \"$1\", \"ip\", \"(.*)\")",
+          "legendFormat": "UE {{n}} max"
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "type": "row",
+      "title": "Buffer-size characterization (bufsize sweeps)",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 37
+      },
+      "collapsed": true,
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "center"
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 38
+          },
+          "id": 30,
+          "options": {
+            "showHeader": true
+          },
+          "targets": [
+            {
+              "expr": "last_over_time(bufsize_char_sdu_set{setpoint=~\".+SDU\",ue=\"0\"}[6h])",
+              "refId": "SDU",
+              "legendFormat": "",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "$ds"
+              },
+              "instant": true,
+              "range": false,
+              "format": "table"
+            },
+            {
+              "expr": "last_over_time(bufsize_char_lat_mean_ms{setpoint=~\".+SDU\",ue=\"0\"}[6h])",
+              "refId": "MEAN",
+              "legendFormat": "",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "$ds"
+              },
+              "instant": true,
+              "range": false,
+              "format": "table"
+            },
+            {
+              "expr": "last_over_time(bufsize_char_lat_p95_ms{setpoint=~\".+SDU\",ue=\"0\"}[6h])",
+              "refId": "P95",
+              "legendFormat": "",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "$ds"
+              },
+              "instant": true,
+              "range": false,
+              "format": "table"
+            },
+            {
+              "expr": "last_over_time(bufsize_char_tput_mbps{setpoint=~\".+SDU\",ue=\"0\"}[6h])",
+              "refId": "TMEAN",
+              "legendFormat": "",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "$ds"
+              },
+              "instant": true,
+              "range": false,
+              "format": "table"
+            },
+            {
+              "expr": "last_over_time(bufsize_char_tput_p95_mbps{setpoint=~\".+SDU\",ue=\"0\"}[6h])",
+              "refId": "TP95",
+              "legendFormat": "",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "$ds"
+              },
+              "instant": true,
+              "range": false,
+              "format": "table"
+            }
+          ],
+          "title": "Buffer-size characterization — setpoint vs latency / throughput",
+          "transformations": [
+            {
+              "id": "joinByField",
+              "options": {
+                "byField": "setpoint",
+                "mode": "outer"
+              }
+            },
+            {
+              "id": "sortBy",
+              "options": {
+                "fields": "",
+                "sort": [
+                  {
+                    "field": "Value #SDU",
+                    "desc": false
+                  }
+                ]
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "__name__": true,
+                  "ue": true,
+                  "Value #SDU": true
+                },
+                "indexByName": {
+                  "setpoint": 0,
+                  "Value #MEAN": 1,
+                  "Value #P95": 2,
+                  "Value #TMEAN": 3,
+                  "Value #TP95": 4
+                },
+                "renameByName": {
+                  "setpoint": "Buffer setpoint",
+                  "Value #MEAN": "UE 0 lat mean (ms)",
+                  "Value #P95": "UE 0 lat p95 (ms)",
+                  "Value #TMEAN": "UE 0 tput mean (Mbps)",
+                  "Value #TP95": "UE 0 tput p95 (Mbps)"
+                }
+              }
+            }
+          ],
+          "type": "table"
+        }
+      ]
+    }
+  ]
+}

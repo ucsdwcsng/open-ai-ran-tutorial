@@ -1,0 +1,23 @@
+# USRP X310 over 10 GbE -- the radio for gnb_ota_tdd_n78_20mhz.yml:
+#   gnb -c gnb_ota_tdd_n78_20mhz.yml -c ru_x310.yml          (scripts/setup_ota.sh --sdr x310 --sdr-nic ...)
+# Assumes the XG FPGA image (SFP+ port 0 = 10 GbE at 192.168.40.2, the factory address) and a UBX or CBX
+# daughterboard in slot A. Antennas on RF A: TX/RX transmits, RX2 receives.
+# The host NIC cabled to the X310 is moved into the gNB pod (MTU 9000); see run_ota_cots.md.
+
+ru_sdr:
+  device_driver: uhd
+  # master_clock_rate 184.32 MHz = 8 x 23.04 MS/s; the default 200 MHz has no integer ratio to 23.04.
+  device_args: type=x300,addr=192.168.40.2,master_clock_rate=184.32e6,send_frame_size=8000,recv_frame_size=8000,num_recv_frames=64,num_send_frames=64
+  srate: 23.04
+  # Analog gains in dB (UBX/CBX: 0-31.5). Start here and raise tx_gain until the UE reports a good RSRP.
+  tx_gain: 20
+  rx_gain: 20
+  # With an OctoClock or another 10 MHz + PPS reference on the REF/PPS inputs:
+  # clock: external
+  # sync: external
+
+# The USRP's free-running clock leaves a frequency offset in the uplink that the PUSCH channel
+# estimator has to absorb. With an external reference the defaults may do better.
+expert_phy:
+  pusch_channel_estimator_td_strategy: average
+  pusch_channel_estimator_cfo_compensation: true

@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=../../tools/schemas/jrtc-ctl..schema.json
+
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+#
+# RLC stats codeletset deployment (DL + UL stats from the gNB RLC layer).
+# Codelet-only deployment (no python app) — same pattern as fapi/deployment_fixed.yaml.
+# Decoded output appears as JSON in the jrtc-decoder container logs.
+
+name: rlc_stats
+
+decoder:
+  - type: decodergrpc
+    host: jrtc-decoder.ran.svc.cluster.local
+    port: 20789
+
+app:
+  - name: rlc_app
+    path: ${JRTC_APPS}/rlc/rlc_stats_app.py
+    type: python
+    host: jrtc-service.ran.svc.cluster.local
+    port: 3001
+    modules:
+      - ${JBPF_CODELETS}/rlc/rlc_dl_stats.py
+      - ${JBPF_CODELETS}/rlc/rlc_ul_stats.py
+
+jbpf:
+  device:
+    - id: 1
+      host: srs-gnb-du1-proxy.ran.svc.cluster.local
+      port: 30450
+
+  codelet_set:
+    - device: 1
+      config: ${JBPF_CODELETS}/rlc/rlc_stats.yaml

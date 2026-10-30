@@ -1,0 +1,429 @@
+# Default values for ran-5g.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+image:
+  srs_jbpf: ghcr.io/microsoft/jrtc-apps/srs-jbpf:latest
+  srs_jbpf_proxy: ghcr.io/microsoft/jrtc-apps/srs-jbpf-sdk:latest
+  pullPolicy: Always
+
+HOSTNAME: ""
+
+resources:
+  gnb:
+    limits:
+      cpu: 5
+      memory: 20Gi
+      hugepages1Gi: 4Gi
+    requests:
+      cpu: 5
+      memory: 20Gi
+      hugepages1Gi: 4Gi
+  jbpf_proxy:
+    limits:
+      cpu: 500m
+      memory: 500Mi
+    requests:
+      cpu: 500m
+      memory: 500Mi
+  jrtc:
+    limits:
+      cpu: 1
+      memory: 1Gi
+      hugepages2Gi: 2Gi
+    requests:
+      cpu: 1
+      memory: 1Gi
+      hugepages2Gi: 2Gi
+  das:
+    limits:
+      cpu: 1
+      memory: 2Gi
+      hugepages2Gi: 4Gi
+    requests:
+      cpu: 1
+      memory: 2Gi
+      hugepages2Gi: 4Gi
+  dmimo:
+    limits:
+      cpu: 1
+      memory: 2Gi
+      hugepages2Gi: 4Gi
+    requests:
+      cpu: 1
+      memory: 2Gi
+      hugepages2Gi: 4Gi
+
+
+duConfigs:
+  du1:
+    midhaul:
+      # IP address to be assigned to the DU pod midhaul interface
+      ip: 192.168.110.233
+    cells:
+      cell1:
+        physicalCellID: 2017
+        cellID: 3333
+        ruNAME: "RU1"
+        ruLocalMAC: "66:44:33:22:11:00" # RAN server fronthaul MAC address
+        ruRemoteMAC: "6C:AD:AD:00:00:69" # Remote RU fronthaul MAC address
+        ruVLAN: "1"
+        ruDPDKResource: "intel.com/intel_sriov_dpdk_ru0"
+        ruDLArfcn: 630684
+        ruBandwidth: 40
+      # cell2:
+      #   ruDPDKResource: "intel.com/intel_sriov_dpdk_ru1"
+      # cell3:
+      #   ruDPDKResource: "intel.com/intel_sriov_dpdk_ru3"
+      # cell4:
+      #   ruDPDKResource: "intel.com/intel_sriov_dpdk_ru3"
+
+cell_cfg:
+  plmn: "00101"
+
+
+ngcParams:
+  coreIP: 192.168.101.50 
+  tac: "000001" 
+  plmn: "00101" 
+
+
+system:
+  # Arguments passed to DPDK 
+  # eal_cpu_args: "--lcores (0-1)@(1-30)"
+  # https://doc.dpdk.org/guides/linux_gsg/linux_eal_parameters.html
+  # This is 1:1 mapping between logical core and physical cores
+  eal_cpu_args: "--lcores (0-22)@(9-31)"
+  # Arguments passes to taskset (if empty, no taskset is used)
+  taskset_cpu_args: "9-31"
+
+
+# These will be assigned by K8s CNI
+sriov:
+  cniVersion: 0.3.1 #<< cniVersion >>
+  cucp_ip: 192.168.101.205 #<< CUCP pod IP SRIOV_CUCP >>
+  cucp_prefix: 24 #<< Prefix Value >>
+  cucp_gateway: 192.168.101.1 #<< Gateway IP Address >>
+  cuup_ip: 192.168.110.205 #<< CUUP pod IP SRIOV_CUUP >>
+  cuup_prefix: 24 #<< Prefix Value >>
+  cuup_gateway: 192.168.110.1 #<< Gateway IP Address >>
+  resourceName: "intel.com/intel_810_1" #<< Name of SRIOV Resource for NGAP on CUCP >>
+
+
+# Run a script to set vLAN FH isolation on switch prior to starting L1 through custom API
+vlan_isolation:
+  enabled: false
+  url: "192.168.1.50:8080"
+
+
+# Add troubleshooting container to each pod, for debugging
+troubleshooter:
+  enabled: true
+  # Any lightweight image that can run a shell and ncat
+  image: "praqma/network-multitool"
+
+
+
+jbpf:
+  # Currently, codelets can only be loaded from a local directory
+  codelets_vol_mount: ""
+  port: 30450
+  cfg:  # the following is passed directly to srsRAN as it's Jbpf config
+    jbpf_run_path: "/tmp"
+    jbpf_namespace: "jbpf"
+    jbpf_enable_ipc: 0
+    jbpf_standalone_io_out_ip: "PUT_JBPF_DECODER_IP_HERE"
+    jbpf_standalone_io_out_port: 20788
+    jbpf_standalone_io_in_port: 30400
+    jbpf_standalone_io_policy: 0
+    jbpf_standalone_io_priority: 0
+    jbpf_io_mem_size_mb: 1024
+    jbpf_ipc_mem_name: "jrt_controller"
+    jbpf_enable_lcm_ipc: 1
+    jbpf_lcm_ipc_name: "jbpf_lcm_ipc"
+    jbpf_agent_cpu: 0
+    jbpf_agent_policy: 1
+    jbpf_agent_priority: 30
+    jbpf_maint_cpu: 0
+    jbpf_maint_policy: 0
+    jbpf_maint_priority: 0
+
+jrtc_controller:
+  # Currently, jrtc applications can only be loaded from a local directory
+  apps_vol_mount: ""
+  image: ghcr.io/microsoft/jrt-controller/jrt-controller-azurelinux:latest
+  port: 30500
+  logging:
+    jrtc_level: info
+    jbpf_level: info
+  log_analytics:
+    enabled: false
+    workspace_id: "PUT_WORKSPACE_ID_HERE"
+    primary_key: "PUT_PRIMARY_KEY_HERE"
+
+  # Start local decoder as a part of the jrtc controller pod for debugging
+  local_decoder: 
+    enabled: false
+    port: 30501
+    log_analytics:
+      enabled: false
+
+udp_forwarder:
+  enabled: true
+  port: 30502
+ 
+
+
+# RANBooster configurations
+das:
+  enabled: false
+  # For 100Mhz , 4 Antenna Setup, Max RUs 4 : 
+  #    - image: altran5gran.azurecr.io/ranbooster/ranbooster-lite:v3
+  #    - Example Config : https://dev.azure.com/belgrade/5GRack/_git/ranDeploymentConfig?path=/redmond/values.1st.floor.das.yaml
+  # For 100Mhz , 2 Antenna Setup: Max RUs 9 : 
+  #    - image:  altran5gran.azurecr.io/ranbooster/ranbooster-lite:v3-100mhz-2antenna
+  #    - Example Config: https://dev.azure.com/belgrade/5GRack/_git/ranDeploymentConfig?path=/redmond/values.2nd.floor.das.yaml 
+  
+  image: "altran5gran.azurecr.io/ranbooster/ranbooster-lite:v3"
+  dasboxes:
+    das1:
+      middlebox:
+        dasName: "das-du-front"
+        vlan: 1
+        localMAC: "00:00:11:11:22:33"  # Local MAC address of the Middlebox
+        remoteMAC: "AA:BB:CC:11:22:33" # Local MAC address of the Middlebox
+        ruDPDKResource: "intel.com/intel_sriov_dpdk_ru1"
+        isolcore: 2
+      cells:
+        cell1:
+          ruNAME: "das1"
+          ruLocalMAC: "00:00:11:11:33:71" # RAN server fronthaul MAC address 
+          ruRemoteMAC: "AA:BB:CC:11:33:71" # Remote ru fronthaul MAC address 
+          vlan: 71      
+
+
+# RANBooster configurations
+dmimo:
+  enabled: false
+  # With Das:
+  #   For 100Mhz , Max RUs 4 
+  #   image: altran5gran.azurecr.io/ranbooster/ranbooster-lite:v3
+  #   Example Config: https://dev.azure.com/belgrade/5GRack/_git/ranDeploymentConfig?path=/redmond/debug/values.2nd.floor.dmimo-das.yaml 
+  # wihtout Das:
+  #   For 100Mhz , Max RUs 2
+  #   image: altran5gran.azurecr.io/ranbooster/ranbooster-lite:v3
+  #   Example Condig: https://dev.azure.com/belgrade/5GRack/_git/ranDeploymentConfig?path=/redmond/debug/values.dmimo.ru1-ru2.yaml
+  image: "altran5gran.azurecr.io/ranbooster/ranbooster-lite:v3"
+  vrus:
+    vru1:
+      middlebox:
+        dmimoMiddleboxName: "middlebox-vru1"
+        vlan: 51
+        localMAC: "AA:BB:CC:11:33:41"  # Local MAC address of the Middlebox
+        remoteMAC: "00:00:11:11:33:41" # Local MAC address of the Middlebox
+        ruDPDKResource: "intel.com/intel_sriov_dpdk_ru7"
+        isolcore: 3
+      rus:
+        ru1:
+          ruNAME: "ru1"
+          ruLocalMAC: "00:11:22:33:0A:A4" # MAC address that is used in both Frounthaul VFs (It has to be unique for each RAN deployment)
+          ruRemoteMAC: "6C:AD:AD:00:0A:A4" # MAC address of the Remote ru
+          ruVLAN: "31"
+          ruDPDKResource: "intel.com/intel_sriov_dpdk_ru8"
+          bitmask: 51
+        ru2:
+          ruNAME: "ru2"
+          ruLocalMAC: "00:11:22:33:0B:4E" # MAC address that is used in both Frounthaul VFs (It has to be unique for each RAN deployment)
+          ruRemoteMAC: "6C:AD:AD:00:0B:4E" # MAC address of the Remote ru
+          ruVLAN: "32"
+          ruDPDKResource: "intel.com/intel_sriov_dpdk_ru9"
+          bitmask: 204
+
+
+
+# If enabled, the chart doesn't start executables in the containers, 
+# so a user can exec into them and start them manually
+debug_mode:
+  enabled: false
+
+
+# The following are directly copied into srsRAN config
+# For reference, see https://docs.srsran.com/projects/project/en/latest/user_manuals/source/config_ref.html
+
+log:
+  rrc_level: info
+  mac_level: info
+  rlc_level: info
+
+# Also metrics, pcap
+# Below is the yaml section that will be directly copied into the srsRAN config file.
+# Note that the install script will update some of the values in this section with the values from the Helm chart.
+# srs_ran_config:
+#   cu_cp:
+#     amf:
+#       addr: open5gs-amf-ngap.open5gs.svc.cluster.local #192.168.101.14
+#       port: 38412
+#       bind_addr: 0.0.0.0
+#       supported_tracking_areas:
+#         - tac: 1
+#           plmn_list:
+#             - plmn: "99970"
+#               tai_slice_support_list:
+#                 - sst: 1
+#                   sd: 162
+#                 - sst: 1
+#                   sd: 163
+#                 - sst: 1
+#                   sd: 164
+#             - plmn: "00101"
+#               tai_slice_support_list:
+#                 - sst: 1
+#                   sd: 162
+#                 - sst: 1
+#                   sd: 163
+#                 - sst: 1
+#                   sd: 164
+#     security:
+#       nea_pref_list: nea2,nea1,nea3,nea0    # required for iPhone
+#     mobility:
+#       cells:
+#         - nr_cell_id: 0x66C000          # For the default gnb_id=411 (gnb_id_bit_length=22), NR cell IDs start with 0x66C000 and increment for each cell of the DU.
+#           periodic_report_cfg_id: 1     # This will configure a periodical report config for the serving cell.
+#       report_configs:                                        # Define report configs for cell 1
+#         - report_cfg_id: 1
+#           report_type: periodical
+#           report_interval_ms: 1024
+
+
+#   cell_cfg:
+#     dl_arfcn: 368500 #630684
+#     common_scs: 15
+#     band: 3
+#     plmn: "99970" #"00101"
+#     tac: 1
+#     pci: 1
+#     channel_bandwidth_MHz: 10
+#     ssb:
+#       ssb_block_power_dbm: -21
+#     nof_antennas_dl: 4
+#     nof_antennas_ul: 4
+#     # tdd_ul_dl_cfg:
+#     #   nof_dl_symbols: 5
+#     #   nof_dl_slots: 5
+#     #   nof_ul_slots: 4
+#     tdd_ul_dl_cfg:
+#       dl_ul_tx_period: 10
+#       nof_dl_slots: 7
+#       nof_dl_symbols: 6
+#       nof_ul_slots: 2
+#       nof_ul_symbols: 4
+#     prach:
+#       prach_config_index: 159
+#       prach_root_sequence_index: 1
+#       zero_correlation_zone: 0
+#       prach_frequency_start: 12
+#     pusch:
+#       mcs_table: qam256
+
+#   cells:
+#     - pci: 1
+#       dl_arfcn: 630684
+
+#   ru_ofh:
+#     ### Commented out and moved to cells due to a likely bug in SRS described here: https://github.com/srsran/srsRAN_Project/issues/987
+#     # ru_bandwidth_MHz: 40
+#     # t1a_max_cp_dl: 470
+#     # t1a_min_cp_dl: 258
+#     # t1a_max_cp_ul: 429
+#     # t1a_min_cp_ul: 285
+#     # t1a_max_up: 196
+#     # t1a_min_up: 50
+#     # ta4_max: 75
+#     # ta4_min: 0
+#     # is_prach_cp_enabled: true
+#     # is_dl_broadcast_enabled: false
+#     # ignore_ecpri_payload_size: true
+#     # compr_method_ul: bfp
+#     # compr_bitwidth_ul: 9
+#     # compr_method_dl: bfp
+#     # compr_bitwidth_dl: 9
+#     # compr_method_prach: none
+#     # compr_bitwidth_prach: 16
+#     # enable_ul_static_compr_hdr: false
+#     # enable_dl_static_compr_hdr: false
+#     # iq_scaling: 2.0
+#     cells:
+#     - network_interface: 0000:3f:00.5    # PCI address of the NIC card in your server
+#       ru_mac_addr: e2:53:8d:8f:a4:6b
+#       du_mac_addr: aa:bb:cc:11:22:33
+#       vlan_tag_up: 1
+#       vlan_tag_cp: 1
+#       prach_port_id: [4, 5, 6, 7]
+#       dl_port_id: [0, 1, 2, 3]
+#       ul_port_id: [0, 1, 2, 3]
+
+#       ### Moved here due to a likely bug in SRS described here: https://github.com/srsran/srsRAN_Project/issues/987
+#       ru_bandwidth_MHz: 40
+#       t1a_max_cp_dl: 470
+#       t1a_min_cp_dl: 258
+#       t1a_max_cp_ul: 429
+#       t1a_min_cp_ul: 285
+#       t1a_max_up: 196
+#       t1a_min_up: 50
+#       ta4_max: 75
+#       ta4_min: 0
+#       is_prach_cp_enabled: true
+#       is_dl_broadcast_enabled: false
+#       ignore_ecpri_payload_size: true
+#       compr_method_ul: bfp
+#       compr_bitwidth_ul: 9
+#       compr_method_dl: bfp
+#       compr_bitwidth_dl: 9
+#       compr_method_prach: none
+#       compr_bitwidth_prach: 16
+#       enable_ul_static_compr_hdr: false
+#       enable_dl_static_compr_hdr: false
+#       iq_scaling: 2.0
+
+
+
+#   # Will be added by the update script
+#   #hal:
+#   #   eal_args: "--lcores (0-1)@(1-30)"
+
+#   log:
+#     filename: ./gnb.log
+#     ofh_level: warning
+#     all_level: warning
+#     gtpu_level: warning
+
+
+#   metrics:
+#     autostart_stdout_metrics: true
+
+# # Ushasi - Additional volume mount configurations (from docker-compose)
+# srsran:
+#   # Source code path on host
+#   source_path: "<REPO_ROOT>/jrtc-apps/containers/Docker/srsRAN_Project"
+
+# jrtc:
+#   # Utilities and scripts paths
+#   utils_path: ""      # defaults to <REPO_ROOT>/jrtc-apps/utils
+#   env_file_path: ""   # defaults to <REPO_ROOT>/jrtc-apps/.env
+#   set_vars_path: ""   # defaults to <REPO_ROOT>/jrtc-apps/set_vars.sh
+
+# # Extended jBPF configuration
+# jbpf_extended:
+#   # Additional jBPF protobuf path
+#   protobuf_path: ""   # defaults to <REPO_ROOT>/jrtc-apps/jbpf_protobuf
+
+# EdgeRIC-RT muApp host (templates/edgeric.yaml): pod edgeric-0 runs every EdgeRIC muApp.
+edgeric:
+  enabled: false
+  image: edgeric:local
+  # Host directory with the muApp code (repo edgeric-rt/), mounted at /edgeric.
+  code_vol_mount: ""
+  # Host directory of the rt_bridge xApp (repo jrtc-apps/jrtc_apps/edgeric_rt), mounted at /apps/edgeric_rt.
+  rt_apps_vol_mount: ""
+  cpu_request: "1"
+  memory: 4Gi

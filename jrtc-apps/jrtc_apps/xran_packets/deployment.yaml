@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=../../tools/schemas/jrtc-ctl..schema.json
+
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+name: xran_packets_deployment
+    
+decoder:
+  - type: decodergrpc
+    port: 20789 #30501
+    #port: 30501
+      
+app:
+  - name: app1
+    path: ${JRTC_APPS}/xran_packets/xran_packets.py
+    type: python
+    port: 30500
+    modules:
+      - ${JBPF_CODELETS}/xran_packets/xran_packet_info.py
+
+jbpf:
+  device:
+    - id: 1
+      port: 30450
+
+  codelet_set:
+    - device: 1
+      config: ${JBPF_CODELETS}/xran_packets/xran_packets.yaml 

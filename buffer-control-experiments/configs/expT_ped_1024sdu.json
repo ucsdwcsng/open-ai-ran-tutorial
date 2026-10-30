@@ -1,0 +1,43 @@
+{
+ "name": "expT_ped_1024sdu",
+ "title": "Trace 'ped' (81 s), static cap 1024 SDU x 1470 B = 1470k, cubic",
+ "duration": 84,
+ "settle": 3,
+ "window": [
+  8,
+  84
+ ],
+ "ues": [
+  {
+   "label": "UE",
+   "container": "durue1",
+   "du_index": "auto"
+  }
+ ],
+ "flows": [
+  {
+   "name": "bulk",
+   "ue": 0,
+   "cc": "cubic",
+   "start": 3
+  }
+ ],
+ "events": [
+  {
+   "t": 0,
+   "bufcap": "1470k"
+  },
+  {
+   "t": 0,
+   "radio": "trace ped"
+  },
+  {
+   "t": 83,
+   "radio": "good"
+  },
+  {
+   "t": 83,
+   "bufcap": "off"
+  }
+ ]
+}

@@ -1,0 +1,19 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+codeletset_id: fapi_gnb_crc
+
+codelet_descriptor:
+
+  - codelet_name: codelet1
+    codelet_path: ${JBPF_CODELETS}/fapi_ul_crc/fapi_gnb_crc.o
+    hook_name: fapi_crc_indication
+    priority: 1
+    out_io_channel:
+      - name: output_map
+        forward_destination: DestinationNone
+        serde:
+          file_path: ${JBPF_CODELETS}/fapi_ul_crc/fapi_gnb_crc:crc_stats_serializer.so
+          protobuf:
+            package_path: ${JBPF_CODELETS}/fapi_ul_crc/fapi_gnb_crc.pb
+            msg_name: crc_stats

@@ -1,0 +1,1175 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "900f78c5-8e1e-4bed-917a-abe980b97443",
+            "version": "KqlParameterItem/1.0",
+            "name": "timeparameter",
+            "label": "Select time",
+            "type": 4,
+            "isRequired": true,
+            "typeSettings": {
+              "selectableValues": [
+                {
+                  "durationMs": 300000
+                },
+                {
+                  "durationMs": 900000
+                },
+                {
+                  "durationMs": 1800000
+                },
+                {
+                  "durationMs": 3600000
+                },
+                {
+                  "durationMs": 14400000
+                },
+                {
+                  "durationMs": 43200000
+                }
+              ],
+              "allowCustom": true
+            },
+            "timeContext": {
+              "durationMs": 86400000
+            },
+            "value": {
+              "durationMs": 300000
+            }
+          }
+        ],
+        "style": "pills",
+        "queryType": 0,
+        "resourceType": "microsoft.operationalinsights/workspaces"
+      },
+      "name": "parameters - 2"
+    },
+    {
+      "type": 11,
+      "content": {
+        "version": "LinkItem/1.0",
+        "style": "tabs",
+        "links": [
+          {
+            "id": "9f8e4b1e-4b32-4262-b177-34f40b628d63",
+            "cellValue": "selectedTab",
+            "linkTarget": "parameter",
+            "linkLabel": "Traffic Info",
+            "subTarget": "Traffic",
+            "preText": "Traffic Info",
+            "style": "link"
+          },
+          {
+            "id": "0a7d87fc-e4da-46f3-96af-8162895459ed",
+            "cellValue": "selectedTab",
+            "linkTarget": "parameter",
+            "linkLabel": "Delays",
+            "subTarget": "Delays",
+            "style": "link"
+          },
+          {
+            "id": "840ab5c0-6243-4be0-af29-6cbb230faf52",
+            "cellValue": "selectedTab",
+            "linkTarget": "parameter",
+            "linkLabel": "Link Statistics",
+            "subTarget": "Link",
+            "style": "link"
+          },
+          {
+            "id": "031ca1a3-9426-4b58-8cc3-eab43d7af5a6",
+            "cellValue": "selectedTab",
+            "linkTarget": "parameter",
+            "linkLabel": "Other Statistics",
+            "subTarget": "Other",
+            "style": "link"
+          }
+        ]
+      },
+      "name": "links - 6"
+    },
+    {
+      "type": 12,
+      "content": {
+        "version": "NotebookGroup/1.0",
+        "groupType": "editable",
+        "items": [
+          {
+            "type": 1,
+            "content": {
+              "json": "<h2 style=\"background-color:#b1b1b1; color:#222; padding:3px 12px; text-align:left; \r\n            border-left:5px solid #005a9c; border-radius:3px; \r\n            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.15);\">\r\n    Traffic Info\r\n</h2>"
+            },
+            "name": "text - 9"
+          },
+          {
+            "type": 1,
+            "content": {
+              "json": "<h4 style=\"background-color:#CAEEFB; color:#222; padding:3px 12px; text-align:left; \r\n            border-left:5px solid #005a9c; border-radius:3px; \r\n            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.15);\">\r\n    Downlink\r\n</h4>"
+            },
+            "name": "text - 9 - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\nlet timeEnd = todatetime({timeparameter:end});\nlet duration = timeEnd - timeStart;\nlet maxPoints = 10000;  // Hard limit for visualization\nlet baseStep = case(\n    duration >= 7d, 15m,\n    duration >= 3d, 4m,     \n    duration >= 48h, 3m, \n    duration >= 24h, 2m,\n    duration >= 12h, 1m, \n    duration >= 4h, 30s,\n    duration >= 1h, 30s,\n    duration >= 15m, 20s,\n    10s  // Default step size\n);\nlet totalPoints = tolong(duration / baseStep);\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\nlet adjustedStep = baseStep * scaleFactor;\njrtc_dashboard_CL\n| where stream_id_s == \"dashboard\"\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\n| where stream_index_s == \"PDCP_DL_STATS\"\n| mv-expand stream_payload_msg.stats\n| extend stats_d = todynamic(stream_payload_msg_stats)\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), isSRB = toint(stats_d.is_srb), rbID = tostring(stats_d.rb_id), totalPduB = todouble(stats_d.sdu_new_bytes.total), pduCount = todouble(stats_d.data_pdu_tx_bytes.count), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\n| where isSRB == 0 // Ignore signalling bearers for data throughput\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\n| project timestamp, imsi_rb = strcat(imsi, \"/\", rbID), totalPduB  // Append bearer ID to IMSI in case there are multiple bearers\n| where timestamp >= timeStart and timestamp <= timeEnd\n| make-series avg_rate_Mbps=avg(totalPduB*8) default=0 \n  on timestamp from timeStart to timeEnd step adjustedStep by imsi_rb\n| render timechart\n",
+              "size": 1,
+              "title": "Downlink PDCP throughput from SDAP [bps]",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "gridSettings": {
+                "sortBy": [
+                  {
+                    "itemKey": "timestamp",
+                    "sortOrder": 1
+                  }
+                ]
+              },
+              "sortBy": [
+                {
+                  "itemKey": "timestamp",
+                  "sortOrder": 1
+                }
+              ],
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "ySettings": {
+                  "min": 0
+                }
+              }
+            },
+            "customWidth": "33",
+            "name": "query - 2"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\nlet timeEnd = todatetime({timeparameter:end});\nlet duration = timeEnd - timeStart;\nlet maxPoints = 10000;  // Hard limit for visualization\nlet baseStep = case(\n    duration >= 7d, 15m,\n    duration >= 3d, 4m,     \n    duration >= 48h, 3m, \n    duration >= 24h, 2m,\n    duration >= 12h, 1m, \n    duration >= 4h, 30s,\n    duration >= 1h, 30s,\n    duration >= 15m, 20s,\n    10s  // Default step size\n);\nlet totalPoints = tolong(duration / baseStep);\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\nlet adjustedStep = baseStep * scaleFactor;\njrtc_dashboard_CL\n| where stream_id_s == \"dashboard\"\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\n| where stream_index_s == \"PDCP_DL_STATS\"\n| mv-expand stream_payload_msg.stats\n| extend stats_d = todynamic(stream_payload_msg_stats)\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), isSRB = toint(stats_d.is_srb), rbID = tostring(stats_d.rb_id), totalPduB = todouble(stats_d.sdu_discarded.total), pduCount = todouble(stats_d.data_pdu_tx_bytes.count), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\n| where isSRB == 0 // Ignore signalling bearers for data throughput\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\n| project timestamp, imsi_rb = strcat(imsi, \"/\", rbID), totalPduB  // Append bearer ID to IMSI in case there are multiple bearers\n| where timestamp >= timeStart and timestamp <= timeEnd\n| make-series avg_rate_Mbps=avg(totalPduB*8) default=0 \n  on timestamp from timeStart to timeEnd step adjustedStep by imsi_rb\n| render timechart\n",
+              "size": 1,
+              "title": "Downlink PDCP discarded from SDAP [bps]",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "gridSettings": {
+                "sortBy": [
+                  {
+                    "itemKey": "timestamp",
+                    "sortOrder": 1
+                  }
+                ]
+              },
+              "sortBy": [
+                {
+                  "itemKey": "timestamp",
+                  "sortOrder": 1
+                }
+              ],
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "ySettings": {
+                  "min": 0
+                }
+              }
+            },
+            "customWidth": "33",
+            "name": "query - 2 - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 6m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    20s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"PDCP_DL_STATS\"\r\n| mv-expand stream_payload_msg.stats\r\n| extend stats_d = todynamic(stream_payload_msg_stats)\r\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), isSRB = toint(stats_d.is_srb), rbID = tostring(stats_d.rb_id), avgQueue = todouble(stats_d.pdu_window_bytes.avg), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| where isSRB == 0 // Ignore signalling bearers for data throughput\r\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\r\n| project imsi_rb = strcat(imsi, \"/\", rbID), avgQueue, timestamp\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series avgQueue=avg(avgQueue) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi_rb\r\n| render timechart\r\n",
+              "size": 1,
+              "title": "Average PDCP DL queue size [B]",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "ySettings": {
+                  "min": 0
+                }
+              }
+            },
+            "customWidth": "33",
+            "name": "query - 3"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\nlet timeEnd = todatetime({timeparameter:end});\nlet duration = timeEnd - timeStart;\nlet maxPoints = 10000;  // Hard limit for visualization\nlet baseStep = case(\n    duration >= 7d, 15m,\n    duration >= 3d, 4m,     \n    duration >= 48h, 3m, \n    duration >= 24h, 2m,\n    duration >= 12h, 1m, \n    duration >= 4h, 30s,\n    duration >= 1h, 30s,\n    duration >= 15m, 20s,\n    10s  // Default step size\n);\nlet totalPoints = tolong(duration / baseStep);\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\nlet adjustedStep = baseStep * scaleFactor;\njrtc_dashboard_CL\n| where stream_id_s == \"dashboard\"\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\n| where stream_index_s == \"RLC_DL_STATS\"\n| mv-expand stream_payload_msg.stats\n| extend stats_d = todynamic(stream_payload_msg_stats)\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), isSRB = toint(stats_d.is_srb), rbID = tostring(stats_d.rb_id), totalPduB = todouble(stats_d.pdu_tx_bytes.total), pduCount = todouble(stats_d.data_pdu_tx_bytes.count), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\n| where isSRB == 0 // Ignore signalling bearers for data throughput\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\n| project timestamp, imsi_rb = strcat(imsi, \"/\", rbID), totalPduB  // Append bearer ID to IMSI in case there are multiple bearers\n| where timestamp >= timeStart and timestamp <= timeEnd\n| make-series avg_rate_Mbps=avg(totalPduB*8) default=0 \n  on timestamp from timeStart to timeEnd step adjustedStep by imsi_rb\n| render timechart\n",
+              "size": 1,
+              "title": "Downlink RLC throughput to MAC [bps]",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "gridSettings": {
+                "sortBy": [
+                  {
+                    "itemKey": "timestamp",
+                    "sortOrder": 1
+                  }
+                ]
+              },
+              "sortBy": [
+                {
+                  "itemKey": "timestamp",
+                  "sortOrder": 1
+                }
+              ],
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "ySettings": {
+                  "min": 0
+                }
+              }
+            },
+            "customWidth": "33",
+            "name": "query - 2 - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\nlet timeEnd = todatetime({timeparameter:end});\nlet duration = timeEnd - timeStart;\nlet maxPoints = 10000;  // Hard limit for visualization\nlet baseStep = case(\n    duration >= 7d, 15m,\n    duration >= 3d, 4m,     \n    duration >= 48h, 3m, \n    duration >= 24h, 2m,\n    duration >= 12h, 1m, \n    duration >= 4h, 30s,\n    duration >= 1h, 30s,\n    duration >= 15m, 20s,\n    10s  // Default step size\n);\nlet totalPoints = tolong(duration / baseStep);\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\nlet adjustedStep = baseStep * scaleFactor;\njrtc_dashboard_CL\n| where stream_id_s == \"dashboard\"\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\n| where stream_index_s == \"RLC_DL_STATS\"\n| mv-expand stream_payload_msg.stats\n| extend stats_d = todynamic(stream_payload_msg_stats)\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), isSRB = toint(stats_d.is_srb), rbID = tostring(stats_d.rb_id), avgReTX = todouble(stats_d.pdu_retx_count.avg), pduCount = todouble(stats_d.data_pdu_tx_bytes.count), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\n| where isSRB == 0 // Ignore signalling bearers for data throughput\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\n| project timestamp, imsi_rb = strcat(imsi, \"/\", rbID), avgReTX  // Append bearer ID to IMSI in case there are multiple bearers\n| where timestamp >= timeStart and timestamp <= timeEnd\n| make-series avgReTX=avg(avgReTX) default=0 \n  on timestamp from timeStart to timeEnd step adjustedStep by imsi_rb\n| render timechart\n",
+              "size": 1,
+              "title": "Downlink RLC average retransmissions per second",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "gridSettings": {
+                "sortBy": [
+                  {
+                    "itemKey": "timestamp",
+                    "sortOrder": 1
+                  }
+                ]
+              },
+              "sortBy": [
+                {
+                  "itemKey": "timestamp",
+                  "sortOrder": 1
+                }
+              ],
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "ySettings": {
+                  "min": 0
+                }
+              }
+            },
+            "customWidth": "33",
+            "name": "query - 2 - Copy - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 6m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    20s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"RLC_DL_STATS\"\r\n| mv-expand stream_payload_msg.stats\r\n| extend stats_d = todynamic(stream_payload_msg_stats)\r\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), isSRB = toint(stats_d.is_srb), rbID = tostring(stats_d.rb_id), avgQueue = todouble(stats_d.sdu_queue_bytes.avg), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| where isSRB == 0 // Ignore signalling bearers for data throughput\r\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\r\n| project imsi_rb = strcat(imsi, \"/\", rbID), avgQueue, timestamp\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series avgQueue=avg(avgQueue) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi_rb\r\n| render timechart\r\n",
+              "size": 1,
+              "title": "Average RLC SDU DL queue size [B]",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "ySettings": {
+                  "min": 0
+                }
+              }
+            },
+            "customWidth": "33",
+            "name": "query - 3 - Copy"
+          },
+          {
+            "type": 1,
+            "content": {
+              "json": "<h4 style=\"background-color:#CAEEFB; color:#222; padding:3px 12px; text-align:left; \r\n            border-left:5px solid #005a9c; border-radius:3px; \r\n            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.15);\">\r\n    Uplink\r\n</h4>"
+            },
+            "name": "text - 9 - Copy - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 6m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    20s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"PDCP_UL_STATS\"\r\n| mv-expand stream_payload_msg.stats\r\n| extend stats_d = todynamic(stream_payload_msg_stats)\r\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), isSRB = toint(stats_d.is_srb), rbID = tostring(stats_d.rb_id), totalSduB = todouble(stats_d.sdu_delivered_bytes.total), sduCount = todouble(stats_d.sdu_delivered_bytes.count), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| where isSRB == 0 // Ignore signalling bearers for data throughput\r\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\r\n| project timestamp, imsi_rb = strcat(imsi, \"/\", rbID), totalSduB  // Select relevant columns\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series avg_rate_Mbps=avg(totalSduB*8) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi_rb\r\n| render timechart\r\n",
+              "size": 1,
+              "title": "Uplink PDCP throughput to SDAP [bps]",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "ySettings": {
+                  "min": 0
+                }
+              }
+            },
+            "customWidth": "25",
+            "name": "query - 3"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 6m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    20s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"PDCP_UL_STATS\"\r\n| mv-expand stream_payload_msg.stats\r\n| extend stats_d = todynamic(stream_payload_msg_stats)\r\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), isSRB = toint(stats_d.is_srb), rbID = tostring(stats_d.rb_id), avgQueue = todouble(stats_d.pdu_window_bytes.avg), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| where isSRB == 0 // Ignore signalling bearers for data throughput\r\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\r\n| project imsi_rb = strcat(imsi, \"/\", rbID), avgQueue, timestamp\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series avgQueue=avg(avgQueue) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi_rb\r\n| render timechart\r\n",
+              "size": 1,
+              "title": "Average PDCP UL queue size [B]",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "ySettings": {
+                  "min": 0
+                }
+              }
+            },
+            "customWidth": "25",
+            "name": "query - 3 - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 6m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    20s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"RLC_UL_STATS\"\r\n| mv-expand stream_payload_msg.stats\r\n| extend stats_d = todynamic(stream_payload_msg_stats)\r\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), isSRB = toint(stats_d.is_srb), rbID = tostring(stats_d.rb_id), totalSduB = todouble(stats_d.pdu_bytes.total), sduCount = todouble(stats_d.sdu_delivered_bytes.count), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| where isSRB == 0 // Ignore signalling bearers for data throughput\r\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\r\n| project timestamp, imsi_rb = strcat(imsi, \"/\", rbID), totalSduB  // Select relevant columns\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series avg_rate_Mbps=avg(totalSduB*8) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi_rb\r\n| render timechart\r\n",
+              "size": 1,
+              "title": "Uplink RLC throughput from MAC [bps]",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "ySettings": {
+                  "min": 0
+                }
+              }
+            },
+            "customWidth": "25",
+            "name": "query - 3 - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 6m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    20s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"RLC_UL_STATS\"\r\n| mv-expand stream_payload_msg.stats\r\n| extend stats_d = todynamic(stream_payload_msg_stats)\r\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), isSRB = toint(stats_d.is_srb), rbID = tostring(stats_d.rb_id), avgQueue = todouble(stats_d.pdu_window_pkts.avg), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| where isSRB == 0 // Ignore signalling bearers for data throughput\r\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\r\n| project imsi_rb = strcat(imsi, \"/\", rbID), avgQueue, timestamp\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series avgQueue=avg(avgQueue) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi_rb\r\n| render timechart\r\n",
+              "size": 1,
+              "title": "Average RLC PDU UL queue size [pkts]",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "ySettings": {
+                  "min": 0
+                }
+              }
+            },
+            "customWidth": "25",
+            "name": "query - 3 - Copy - Copy"
+          }
+        ]
+      },
+      "conditionalVisibility": {
+        "parameterName": "selectedTab",
+        "comparison": "isEqualTo",
+        "value": "Traffic"
+      },
+      "name": "PDCP"
+    },
+    {
+      "type": 12,
+      "content": {
+        "version": "NotebookGroup/1.0",
+        "groupType": "editable",
+        "items": [
+          {
+            "type": 1,
+            "content": {
+              "json": "<h2 style=\"background-color:#b1b1b1; color:#222; padding:3px 12px; text-align:left; \r\n            border-left:5px solid #005a9c; border-radius:3px; \r\n            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.15);\">\r\n    Delays\r\n</h2>"
+            },
+            "name": "text - 0"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 6m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    20s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"PDCP_DL_STATS\"\r\n| mv-expand stream_payload_msg.stats\r\n| extend stats_d = todynamic(stream_payload_msg_stats)\r\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), isSRB = toint(stats_d.is_srb), rbID = tostring(stats_d.rb_id), avgDelay = todouble(stats_d.sdu_tx_latency.avg)/1000, timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| where isSRB == 0 // Ignore signalling bearers for data throughput\r\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\r\n| project imsi_rb = strcat(imsi, \"/\", rbID), avgDelay, timestamp\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series avgDelay=avg(avgDelay) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi_rb\r\n| render timechart\r\n",
+              "size": 1,
+              "title": "Average PDCP TX downlink latency [us]",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "ySettings": {
+                  "min": 0
+                }
+              }
+            },
+            "customWidth": "50",
+            "name": "query - 3 - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 6m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    20s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"RLC_UL_STATS\"\r\n| mv-expand stream_payload_msg.stats\r\n| extend stats_d = todynamic(stream_payload_msg_stats)\r\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), isSRB = toint(stats_d.is_srb), rbID = tostring(stats_d.rb_id), avgDelay = todouble(stats_d.sdu_delivered_latency.avg)/1000, timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| where isSRB == 0 // Ignore signalling bearers for data throughput\r\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\r\n| project imsi_rb = strcat(imsi, \"/\", rbID), avgDelay, timestamp\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series avgDelay=avg(avgDelay) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi_rb\r\n| render timechart\r\n",
+              "size": 1,
+              "title": "Average RLC uplink latency (from first bit to delivered) [us]",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "ySettings": {
+                  "min": 0
+                }
+              }
+            },
+            "customWidth": "50",
+            "name": "query - 3 - Copy - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 6m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    20s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"RLC_DL_STATS\"\r\n| mv-expand stream_payload_msg.stats\r\n| extend stats_d = todynamic(stream_payload_msg_stats)\r\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), isSRB = toint(stats_d.is_srb), rbID = tostring(stats_d.rb_id), avgDelay = todouble(stats_d.sdu_tx_started.avg)/1000000, timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| where isSRB == 0 // Ignore signalling bearers for data throughput\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\r\n| project imsi_rb = strcat(imsi, \"/\", rbID), avgDelay, timestamp\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series avgDelay=avg(avgDelay) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi_rb\r\n| render timechart\r\n",
+              "size": 1,
+              "title": "Average RLC latency to send first SDU byte to MAC [ms]",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "ySettings": {
+                  "min": 0
+                }
+              }
+            },
+            "customWidth": "33",
+            "name": "query - 3 - Copy - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 6m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    20s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"RLC_DL_STATS\"\r\n| mv-expand stream_payload_msg.stats\r\n| extend stats_d = todynamic(stream_payload_msg_stats)\r\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), isSRB = toint(stats_d.is_srb), rbID = tostring(stats_d.rb_id), avgDelay = todouble(stats_d.sdu_tx_completed.avg)/1000000, timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| where isSRB == 0 // Ignore signalling bearers for data throughput\r\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\r\n| project imsi_rb = strcat(imsi, \"/\", rbID), avgDelay, timestamp\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series avgDelay=avg(avgDelay) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi_rb\r\n| render timechart\r\n",
+              "size": 1,
+              "title": "Average RLC latency to send entire SDU to MAC [ms]",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "ySettings": {
+                  "min": 0
+                }
+              }
+            },
+            "customWidth": "33",
+            "name": "query - 3 - Copy - Copy - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 6m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    20s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"RLC_DL_STATS\"\r\n| mv-expand stream_payload_msg.stats\r\n| extend stats_d = todynamic(stream_payload_msg_stats)\r\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), isSRB = toint(stats_d.is_srb), rbID = tostring(stats_d.rb_id), avgDelay = todouble(stats_d.sdu_tx_delivered.avg)/1000000, timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| where isSRB == 0 // Ignore signalling bearers for data throughput\r\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\r\n| project imsi_rb = strcat(imsi, \"/\", rbID), avgDelay, timestamp\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series avgDelay=avg(avgDelay) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi_rb\r\n| render timechart\r\n",
+              "size": 1,
+              "title": "Average RLC downlink delivery-to-UE latency [ms]",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "ySettings": {
+                  "min": 0
+                }
+              }
+            },
+            "customWidth": "33",
+            "name": "query - 3 - Copy - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 6m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    20s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"MAC_SCHED_UCI_STATS\"\r\n| mv-expand stream_payload_msg.stats\r\n| extend stats_d = todynamic(stream_payload_msg_stats)\r\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), isSRB = toint(stats_d.is_srb), rbID = tostring(stats_d.rb_id), avgSR = todouble(stats_d.sr_detected), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\r\n| project imsi_rb = strcat(imsi, \"/\", rbID), avgSR, timestamp\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series avgSR=avg(avgSR) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi_rb\r\n| render timechart",
+              "size": 1,
+              "title": "Uplink MAC scheduling request (SR) per second",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "ySettings": {
+                  "min": 0
+                }
+              }
+            },
+            "customWidth": "33",
+            "name": "query - 6 - Copy - Copy - Copy - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 8m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 20s,\r\n    duration >= 1h, 10s,\r\n    duration >= 15m, 2s,\r\n    1s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"MAC_SCHED_BSR_STATS\"\r\n| mv-expand stream_payload_msg.stats\r\n| extend stats_d = todynamic(stream_payload_msg_stats)\r\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), bsr = todouble(stats_d.cnt), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| project timestamp, imsi, bsr  // Select relevant columns\r\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series bsr=avg(bsr) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi\r\n| render timechart\r\n",
+              "size": 1,
+              "title": "Average number of BSR per second per user",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "ySettings": {
+                  "min": 0
+                }
+              }
+            },
+            "customWidth": "33",
+            "name": "query - 6 - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 8m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 20s,\r\n    duration >= 1h, 10s,\r\n    duration >= 15m, 2s,\r\n    1s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"MAC_SCHED_BSR_STATS\"\r\n| mv-expand stream_payload_msg.stats\r\n| extend stats_d = todynamic(stream_payload_msg_stats)\r\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), bsr = todouble(stats_d.bytes), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| project timestamp, imsi, bsr  // Select relevant columns\r\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series bsr=avg(bsr) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi\r\n| render timechart\r\n",
+              "size": 1,
+              "title": "Average BSR size in bytes per user per second ",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "ySettings": {
+                  "min": 0
+                }
+              }
+            },
+            "customWidth": "33",
+            "name": "query - 6 - Copy - Copy"
+          }
+        ]
+      },
+      "conditionalVisibility": {
+        "parameterName": "selectedTab",
+        "comparison": "isEqualTo",
+        "value": "Delays"
+      },
+      "name": "Delays"
+    },
+    {
+      "type": 12,
+      "content": {
+        "version": "NotebookGroup/1.0",
+        "groupType": "editable",
+        "items": [
+          {
+            "type": 1,
+            "content": {
+              "json": "<h2 style=\"background-color:#b1b1b1; color:#222; padding:3px 12px; text-align:left; \r\n            border-left:5px solid #005a9c; border-radius:3px; \r\n            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.15);\">\r\n    Link statistics\r\n</h2>"
+            },
+            "name": "text - 10"
+          },
+          {
+            "type": 1,
+            "content": {
+              "json": "<h4 style=\"background-color:#CAEEFB; color:#222; padding:3px 12px; text-align:left; \r\n            border-left:5px solid #005a9c; border-radius:3px; \r\n            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.15);\">\r\n    Downlink\r\n</h4>"
+            },
+            "name": "text - 10 - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 6m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    20s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"RLC_DL_STATS\"\r\n| mv-expand stream_payload_msg.stats\r\n| extend stats_d = todynamic(stream_payload_msg_stats)\r\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), isSRB = toint(stats_d.is_srb), rbID = tostring(stats_d.rb_id), avgReTX = todouble(stats_d.pdu_retx_count.avg), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| where isSRB == 0 // Ignore signalling bearers for data throughput\r\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\r\n| project imsi_rb = strcat(imsi, \"/\", rbID), avgReTX, timestamp\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series avgReTX=avg(avgReTX) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi_rb\r\n| render timechart",
+              "size": 1,
+              "title": "Average number of downlink RLC retransmissions",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "ySettings": {
+                  "min": 0
+                }
+              }
+            },
+            "customWidth": "33",
+            "name": "query - 6 - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 6m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    20s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"MAC_SCHED_UCI_STATS\"\r\n| mv-expand stream_payload_msg.stats\r\n| extend stats_d = todynamic(stream_payload_msg_stats)\r\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), isSRB = toint(stats_d.is_srb), rbID = tostring(stats_d.rb_id), avgCQI = todouble(stats_d.csi.cqi.avg), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\r\n| project imsi_rb = strcat(imsi, \"/\", rbID), avgCQI, timestamp\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series avgCQI=avg(avgCQI) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi_rb\r\n| render timechart",
+              "size": 1,
+              "title": "Average CQI on downlink",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "ySettings": {
+                  "min": 0
+                }
+              }
+            },
+            "customWidth": "33",
+            "name": "query - 6 - Copy - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 8m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    10s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"FAPI_DL_CONFIG\"\r\n| mv-expand stream_payload_msg.ues\r\n| extend ues = todynamic(stream_payload_msg_ues)\r\n| extend ueIndex = tostring(ues.ueid), timsi = tostring(ues.ue_ctx.tmsi), supi = tostring(ues.ue_ctx.core_amf_info.supi), l1PrbAvg = todouble(ues.l1_prb_avg), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| project timestamp, imsi, l1PrbAvg  // Select relevant columns\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series l1PrbAvg=avg(l1PrbAvg) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi\r\n| render timechart\r\n",
+              "size": 1,
+              "title": "Average downlink spectrum utilization (in PRB) per user",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true
+              }
+            },
+            "customWidth": "33",
+            "name": "query - 7"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 8m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    10s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"FAPI_DL_CONFIG\"\r\n| mv-expand stream_payload_msg.ues\r\n| extend ues = todynamic(stream_payload_msg_ues)\r\n| extend ueIndex = tostring(ues.ueid), timsi = tostring(ues.ue_ctx.tmsi), supi = tostring(ues.ue_ctx.core_amf_info.supi), l1McsAvg = todouble(ues.l1_mcs_avg), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| project timestamp, imsi, l1McsAvg  // Select relevant columns\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series l1McsAvg=avg(l1McsAvg) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi\r\n| render timechart\r\n",
+              "size": 1,
+              "title": "Average downlink MCS per user",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true
+              }
+            },
+            "customWidth": "33",
+            "name": "query - 7 - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 8m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    10s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"FAPI_DL_CONFIG\"\r\n| mv-expand stream_payload_msg.ues\r\n| extend ues = todynamic(stream_payload_msg_ues)\r\n| extend ueIndex = tostring(ues.ueid), timsi = tostring(ues.ue_ctx.tmsi), supi = tostring(ues.ue_ctx.core_amf_info.supi), l1TbsAvg = todouble(ues.l1_tbs_avg), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| project timestamp, imsi, l1TbsAvg  // Select relevant columns\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series l1TbsAvg=avg(l1TbsAvg) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi\r\n| render timechart\r\n",
+              "size": 1,
+              "title": "Average downlink transport block size per user",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true
+              }
+            },
+            "customWidth": "33",
+            "name": "query - 7 - Copy - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 6m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    20s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"MAC_SCHED_UCI_STATS\"\r\n| mv-expand stream_payload_msg.stats\r\n| extend stats_d = todynamic(stream_payload_msg_stats)\r\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), isSRB = toint(stats_d.is_srb), rbID = tostring(stats_d.rb_id), avgCSIRI = todouble(stats_d.csi.ri.avg), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\r\n| project imsi_rb = strcat(imsi, \"/\", rbID), avgCSIRI, timestamp\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series avgCSIRI=avg(avgCSIRI) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi_rb\r\n| render timechart\r\n\r\n\r\n// let timeStart = todatetime({timeparameter:start});\r\n// let timeEnd = todatetime({timeparameter:end});\r\n// let duration = timeEnd - timeStart;\r\n// let maxPoints = 10000;  // Hard limit for visualization\r\n// let baseStep = case(\r\n//     duration >= 7d, 15m,\r\n//     duration >= 3d, 8m,     \r\n//     duration >= 48h, 4m, \r\n//     duration >= 24h, 2m,\r\n//     duration >= 12h, 1m, \r\n//     duration >= 4h, 30s,\r\n//     duration >= 1h, 30s,\r\n//     duration >= 15m, 20s,\r\n//     10s  // Default step size\r\n// );\r\n// let totalPoints = tolong(duration / baseStep);\r\n// let scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\n// let adjustedStep = baseStep * scaleFactor;\r\n// jrtc_dashboard_CL\r\n// | where stream_id_s == \"dashboard\"\r\n// | extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n// | extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n// | where stream_index_s == \"FAPI_DL_CONFIG\"\r\n// | mv-expand stream_payload_msg.ues\r\n// | extend ues = todynamic(stream_payload_msg_ues)\r\n// | extend ueIndex = tostring(ues.ueid), timsi = tostring(ues.ue_ctx.tmsi), supi = tostring(ues.ue_ctx.core_amf_info.supi), l1AntAvg = todouble(ues.l1_ant_avg), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n// | extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n// | project timestamp, imsi, l1AntAvg  // Select relevant columns\r\n// | where timestamp >= timeStart and timestamp <= timeEnd\r\n// | make-series l1AntAvg=avg(l1AntAvg) default=0 \r\n//   on timestamp from timeStart to timeEnd step adjustedStep by imsi\r\n// | render timechart\r\n",
+              "size": 1,
+              "title": "Average number of streams per user on downlink (MAC)",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true
+              }
+            },
+            "customWidth": "33",
+            "name": "query - 7 - Copy - Copy - Copy - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 6m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    20s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"MAC_SCHED_DL_HARQ\"\r\n| mv-expand stream_payload_msg.stats\r\n| extend stats_d = todynamic(stream_payload_msg_stats)\r\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend txCount=toint(stats_d.perHarqTypeStats.MAC_HARQ_EVENT_TX.tbs.pkts), reTxCount=toint(stats_d.perHarqTypeStats.MAC_HARQ_EVENT_RETX.tbs.pkts)\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series tx=sum(txCount), reTx=sum(reTxCount) default=0 \r\n    on timestamp \r\n    from timeStart to timeEnd \r\n    step adjustedStep \r\n    by imsi\r\n| extend zipped = zip(timestamp, tx, reTx)\r\n| mv-expand point = zipped\r\n| extend timestamp = todatetime(point[0]),\r\n         txVal = todouble(point[1]),\r\n         reTxVal = todouble(point[2])\r\n| extend failureRate = iif(txVal + reTxVal == 0, 0.0, reTxVal  * 100.0 / (txVal + reTxVal))\r\n| project imsi, timestamp, failureRate\r\n| render timechart\r\n\r\n",
+              "size": 1,
+              "title": "MAC DL HARQ Failure rates",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "ySettings": {
+                  "min": 0
+                }
+              }
+            },
+            "customWidth": "25",
+            "name": "query - 6 - Copy - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 6m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    20s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"MAC_SCHED_DL_HARQ\"\r\n| mv-expand stream_payload_msg.stats\r\n| extend stats_d = todynamic(stream_payload_msg_stats)\r\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend failureCount=toint(stats_d.perHarqTypeStats.MAC_HARQ_EVENT_FAILURE.tbs.pkts)\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series failures=sum(failureCount) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi\r\n| render timechart\r\n\r\n",
+              "size": 1,
+              "title": "Number of MAC DL HARQ Process failures",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "ySettings": {
+                  "min": 0
+                }
+              }
+            },
+            "customWidth": "25",
+            "name": "query - 6 - Copy - Copy - Copy - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 6m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    20s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"MAC_SCHED_DL_HARQ\"\r\n| mv-expand stream_payload_msg.stats\r\n| extend stats_d = todynamic(stream_payload_msg_stats)\r\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend txCount=toint(stats_d.perHarqTypeStats.MAC_HARQ_EVENT_TX.tbs.bytes)\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series Tx=sum(txCount) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi\r\n| mv-expand timestamp to typeof(datetime), Tx to typeof(long)\r\n| extend Mbps = Tx * 8.0 / (adjustedStep / 1s) / 1000000.0\r\n| project imsi, timestamp, Mbps\r\n| render timechart\r\n\r\n\r\n",
+              "size": 1,
+              "title": "MAC DL HARQ TBS Tx Mbps",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "ySettings": {
+                  "min": 0
+                }
+              }
+            },
+            "customWidth": "25",
+            "name": "query - 6 - Copy - Copy - Copy - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 6m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    20s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"MAC_SCHED_DL_HARQ\"\r\n| mv-expand stream_payload_msg.stats\r\n| extend stats_d = todynamic(stream_payload_msg_stats)\r\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend reTxCount=toint(stats_d.perHarqTypeStats.MAC_HARQ_EVENT_RETX.tbs.bytes)\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series reTx=sum(reTxCount) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi\r\n| mv-expand timestamp to typeof(datetime), reTx to typeof(long)\r\n| extend Mbps = reTx * 8.0 / (adjustedStep / 1s) / 1000000.0\r\n| project imsi, timestamp, Mbps\r\n| render timechart\r\n\r\n\r\n",
+              "size": 1,
+              "title": "MAC DL HARQ TBS ReTx Mbps",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "ySettings": {
+                  "min": 0
+                }
+              }
+            },
+            "customWidth": "25",
+            "name": "query - 6 - Copy - Copy - Copy - Copy"
+          },
+          {
+            "type": 1,
+            "content": {
+              "json": "<h4 style=\"background-color:#CAEEFB; color:#222; padding:3px 12px; text-align:left; \r\n            border-left:5px solid #005a9c; border-radius:3px; \r\n            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.15);\">\r\n    Uplink\r\n</h4>"
+            },
+            "name": "text - 10 - Copy - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 8m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    20s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"MAC_SCHED_CRC_STATS\"\r\n| mv-expand stream_payload_msg.stats\r\n| extend stats_d = todynamic(stream_payload_msg_stats)\r\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), maxSinr = todouble(stats_d.max_sinr), minSinr = todouble(stats_d.min_sinr), avgSinr = todouble(stats_d.avg_sinr), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| project timestamp, imsi, maxSinr, avgSinr  // Select relevant columns\r\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\r\n| where timestamp >= timeStart and timestamp <= timeEnd and not(isempty(imsi))\r\n| make-series avgSinr=avg(avgSinr) default=-65.0\r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi\r\n| render timechart\r\n",
+              "size": 1,
+              "title": "Avg uplink SINR [dB]",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "customThresholdLine": "10",
+                "customThresholdLineStyle": 5,
+                "ySettings": {
+                  "min": -66,
+                  "max": 66,
+                  "label": ""
+                }
+              }
+            },
+            "customWidth": "33",
+            "name": "query - 4"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "\r\nlet timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 8m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    20s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"MAC_SCHED_CRC_STATS\"\r\n| mv-expand stream_payload_msg.stats\r\n| extend stats_d = todynamic(stream_payload_msg_stats)\r\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), maxRsrp = todouble(stats_d.max_rsrp), minRsrp = todouble(stats_d.min_rsrp), avgRsrp = todouble(stats_d.avg_rsrp), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| project timestamp, imsi, maxRsrp, avgRsrp  // Select relevant columns\r\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\r\n| where timestamp >= timeStart and timestamp <= timeEnd and not(isempty(imsi))\r\n| make-series avgRsrp=avg(avgRsrp) default=-128\r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi\r\n| render timechart\r\n\r\n",
+              "size": 1,
+              "title": "Avg uplink RSRP [dBm]",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "customThresholdLine": "-80",
+                "customThresholdLineStyle": 5
+              }
+            },
+            "customWidth": "33",
+            "name": "query - 4 - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 8m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 20s,\r\n    duration >= 1h, 10s,\r\n    duration >= 15m, 2s,\r\n    1s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"MAC_SCHED_CRC_STATS\"\r\n| mv-expand stream_payload_msg.stats\r\n| extend stats_d = todynamic(stream_payload_msg_stats)\r\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), consMax = todouble(stats_d.cons_max), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| project timestamp, imsi, consMax  // Select relevant columns\r\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series consMax=avg(consMax) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi\r\n| render timechart\r\n",
+              "size": 1,
+              "title": "Maximum consecutive uplink MAC level retransmissions",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "ySettings": {
+                  "min": 0
+                }
+              }
+            },
+            "customWidth": "33",
+            "name": "query - 6"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 8m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    10s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"FAPI_UL_CONFIG\"\r\n| mv-expand stream_payload_msg.ues\r\n| extend ues = todynamic(stream_payload_msg_ues)\r\n| extend ueIndex = tostring(ues.ueid), timsi = tostring(ues.ue_ctx.tmsi), supi = tostring(ues.ue_ctx.core_amf_info.supi), l1PrbAvg = todouble(ues.l1_prb_avg), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| project timestamp, imsi, l1PrbAvg  // Select relevant columns\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series l1PrbAvg=avg(l1PrbAvg) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi\r\n| render timechart\r\n",
+              "size": 1,
+              "title": "Average uplink spectrum utilization (in PRB) per user",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true
+              }
+            },
+            "customWidth": "25",
+            "name": "query - 7 - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 8m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    10s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"FAPI_UL_CONFIG\"\r\n| mv-expand stream_payload_msg.ues\r\n| extend ues = todynamic(stream_payload_msg_ues)\r\n| extend ueIndex = tostring(ues.ueid), timsi = tostring(ues.ue_ctx.tmsi), supi = tostring(ues.ue_ctx.core_amf_info.supi), l1McsAvg = todouble(ues.l1_mcs_avg), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| project timestamp, imsi, l1McsAvg  // Select relevant columns\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series l1McsAvg=avg(l1McsAvg) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi\r\n| render timechart\r\n",
+              "size": 1,
+              "title": "Average uplink MCS per user",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true
+              }
+            },
+            "customWidth": "25",
+            "name": "query - 7 - Copy - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 8m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    10s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"FAPI_UL_CONFIG\"\r\n| mv-expand stream_payload_msg.ues\r\n| extend ues = todynamic(stream_payload_msg_ues)\r\n| extend ueIndex = tostring(ues.ueid), timsi = tostring(ues.ue_ctx.tmsi), supi = tostring(ues.ue_ctx.core_amf_info.supi), l1TbsAvg = todouble(ues.l1_tbs_avg), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| project timestamp, imsi, l1TbsAvg  // Select relevant columns\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series l1TbsAvg=avg(l1TbsAvg) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi\r\n| render timechart\r\n",
+              "size": 1,
+              "title": "Average uplink transport block size per user",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true
+              }
+            },
+            "customWidth": "25",
+            "name": "query - 7 - Copy - Copy - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 8m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    10s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"FAPI_UL_CONFIG\"\r\n| mv-expand stream_payload_msg.ues\r\n| extend ues = todynamic(stream_payload_msg_ues)\r\n| extend ueIndex = tostring(ues.ueid), timsi = tostring(ues.ue_ctx.tmsi), supi = tostring(ues.ue_ctx.core_amf_info.supi), l1AntAvg = todouble(ues.l1_ant_avg), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| project timestamp, imsi, l1AntAvg  // Select relevant columns\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series l1AntAvg=avg(l1AntAvg) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi\r\n| render timechart\r\n",
+              "size": 1,
+              "title": "Average number of streams per user on uplink",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true
+              }
+            },
+            "customWidth": "25",
+            "name": "query - 7 - Copy - Copy - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 6m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    20s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"MAC_SCHED_UL_HARQ\"\r\n| mv-expand stream_payload_msg.stats\r\n| extend stats_d = todynamic(stream_payload_msg_stats)\r\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend txCount=toint(stats_d.perHarqTypeStats.MAC_HARQ_EVENT_TX.tbs.pkts), reTxCount=toint(stats_d.perHarqTypeStats.MAC_HARQ_EVENT_RETX.tbs.pkts)\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series tx=sum(txCount), reTx=sum(reTxCount) default=0 \r\n    on timestamp \r\n    from timeStart to timeEnd \r\n    step adjustedStep \r\n    by imsi\r\n| extend zipped = zip(timestamp, tx, reTx)\r\n| mv-expand point = zipped\r\n| extend timestamp = todatetime(point[0]),\r\n         txVal = todouble(point[1]),\r\n         reTxVal = todouble(point[2])\r\n| extend failureRate = iif(txVal + reTxVal == 0, 0.0, reTxVal * 100.0 / (txVal + reTxVal))\r\n| project imsi, timestamp, failureRate\r\n| render timechart\r\n\r\n",
+              "size": 1,
+              "title": "MAC UL HARQ Failure rates",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "ySettings": {
+                  "min": 0
+                }
+              }
+            },
+            "customWidth": "25",
+            "name": "query - 6 - Copy - Copy - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 6m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    20s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"MAC_SCHED_UL_HARQ\"\r\n| mv-expand stream_payload_msg.stats\r\n| extend stats_d = todynamic(stream_payload_msg_stats)\r\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend failureCount=toint(stats_d.perHarqTypeStats.MAC_HARQ_EVENT_FAILURE.tbs.pkts)\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series failures=sum(failureCount) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi\r\n| render timechart\r\n\r\n",
+              "size": 1,
+              "title": "Number of MAC UL HARQ Process failures",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "ySettings": {
+                  "min": 0
+                }
+              }
+            },
+            "customWidth": "25",
+            "name": "query - 6 - Copy - Copy - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 6m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    20s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"MAC_SCHED_UL_HARQ\"\r\n| mv-expand stream_payload_msg.stats\r\n| extend stats_d = todynamic(stream_payload_msg_stats)\r\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend txCount=toint(stats_d.perHarqTypeStats.MAC_HARQ_EVENT_TX.tbs.bytes)\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series Tx=sum(txCount) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi\r\n| mv-expand timestamp to typeof(datetime), Tx to typeof(long)\r\n| extend Mbps = Tx * 8.0 / (adjustedStep / 1s) / 1000000.0\r\n| project imsi, timestamp, Mbps\r\n| render timechart\r\n\r\n\r\n",
+              "size": 1,
+              "title": "MAC UL HARQ TBS Tx Mbps",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "ySettings": {
+                  "min": 0
+                }
+              }
+            },
+            "customWidth": "25",
+            "name": "query - 6 - Copy - Copy - Copy"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 6m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 30s,\r\n    duration >= 1h, 30s,\r\n    duration >= 15m, 20s,\r\n    20s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"MAC_SCHED_UL_HARQ\"\r\n| mv-expand stream_payload_msg.stats\r\n| extend stats_d = todynamic(stream_payload_msg_stats)\r\n| extend ueIndex = tostring(stats_d.ueid), timsi = tostring(stats_d.ue_ctx.tmsi), supi = tostring(stats_d.ue_ctx.core_amf_info.supi), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| extend reTxCount=toint(stats_d.perHarqTypeStats.MAC_HARQ_EVENT_RETX.tbs.bytes)\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| where not(isempty(imsi)) // Only include UEs connected for a longer time\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series reTx=sum(reTxCount) default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi\r\n| mv-expand timestamp to typeof(datetime), reTx to typeof(long)\r\n| extend Mbps = reTx * 8.0 / (adjustedStep / 1s) / 1000000.0\r\n| project imsi, timestamp, Mbps\r\n| render timechart\r\n\r\n\r\n",
+              "size": 1,
+              "title": "MAC UL HARQ TBS ReTx Mbps",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true,
+                "ySettings": {
+                  "min": 0
+                }
+              }
+            },
+            "customWidth": "25",
+            "name": "query - 6 - Copy - Copy - Copy - Copy - Copy"
+          }
+        ]
+      },
+      "conditionalVisibility": {
+        "parameterName": "selectedTab",
+        "comparison": "isEqualTo",
+        "value": "Link"
+      },
+      "name": "Link"
+    },
+    {
+      "type": 12,
+      "content": {
+        "version": "NotebookGroup/1.0",
+        "groupType": "editable",
+        "items": [
+          {
+            "type": 1,
+            "content": {
+              "json": "<h2 style=\"background-color:#b1b1b1; color:#222; padding:3px 12px; text-align:left; \r\n            border-left:5px solid #005a9c; border-radius:3px; \r\n            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.15);\">\r\n    Other statistics\r\n</h2>"
+            },
+            "name": "text - 11"
+          },
+          {
+            "type": 1,
+            "content": {
+              "json": "<h4 style=\"background-color:#CAEEFB; color:#222; padding:3px 12px; text-align:left; \r\n            border-left:5px solid #005a9c; border-radius:3px; \r\n            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.15);\">\r\n    Signalling\r\n</h4>"
+            },
+            "name": "text - 4"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 8m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 20s,\r\n    duration >= 1h, 4s,\r\n    duration >= 15m, 2s,\r\n    1s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where substring(stream_index_s, 0, 6) == \"RRC_UE\"\r\n| extend stream_payload_msg_d = todynamic(stream_payload_msg)\r\n| extend timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp)), timsi = tostring(stream_payload_msg_d.ue_ctx.tmsi), supi = tostring(stream_payload_msg_d.ue_ctx.core_amf_info.supi)\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| project timestamp, imsi  // Select relevant columns\r\n| where not(isempty(imsi))\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| make-series signalling=count() default=0 \r\n  on timestamp from timeStart to timeEnd step adjustedStep by imsi\r\n| render timechart\r\n",
+              "size": 1,
+              "title": "Number of signalling (RRC) messages per UE",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true
+              }
+            },
+            "customWidth": "50",
+            "name": "query - 8"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\nlet duration = timeEnd - timeStart;\r\nlet maxPoints = 10000;  // Hard limit for visualization\r\nlet baseStep = case(\r\n    duration >= 7d, 15m,\r\n    duration >= 3d, 8m,     \r\n    duration >= 48h, 4m, \r\n    duration >= 24h, 2m,\r\n    duration >= 12h, 1m, \r\n    duration >= 4h, 20s,\r\n    duration >= 1h, 4s,\r\n    duration >= 15m, 2s,\r\n    1s  // Default step size\r\n);\r\nlet totalPoints = tolong(duration / baseStep);\r\nlet scaleFactor = ceiling(totalPoints * 1.0 / maxPoints);  // Ensure step scaling\r\nlet adjustedStep = baseStep * scaleFactor;\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where substring(stream_index_s, 0, 6) == \"RRC_UE\"\r\n| extend stream_payload_msg_d = todynamic(stream_payload_msg)\r\n| extend timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp)), timsi = tostring(stream_payload_msg_d.ue_ctx.tmsi), supi = tostring(stream_payload_msg_d.ue_ctx.core_amf_info.supi)\r\n| extend imsi = iff(not(isempty(supi)), substring(supi, 5), timsi)\r\n| where not(isempty(imsi))\r\n| project timestamp, imsi=tostring(imsi), stream_index_s\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| summarize count() by imsi, stream_index_s\r\n| evaluate pivot(stream_index_s, sum(count_))\r\n| render barchart // Bar chart doesn't support strings on x axis...\r\n\r\n",
+              "size": 1,
+              "title": "Number of signalling (RRC) messages per UE",
+              "timeContextFromParameter": "timeparameter",
+              "queryType": 0,
+              "resourceType": "microsoft.operationalinsights/workspaces",
+              "chartSettings": {
+                "showMetrics": false,
+                "showLegend": true
+              }
+            },
+            "customWidth": "50",
+            "name": "query - 8 - Copy"
+          },
+          {
+            "type": 12,
+            "content": {
+              "version": "NotebookGroup/1.0",
+              "groupType": "editable",
+              "items": [
+                {
+                  "type": 1,
+                  "content": {
+                    "json": "<h4 style=\"background-color:#CAEEFB; color:#222; padding:3px 12px; text-align:left; \r\n            border-left:5px solid #005a9c; border-radius:3px; \r\n            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.15);\">\r\n    Codelet Runtimes\r\n</h4>"
+                  },
+                  "name": "text - 0"
+                },
+                {
+                  "type": 3,
+                  "content": {
+                    "version": "KqlItem/1.0",
+                    "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"JBPF_STATS_REPORT\"\r\n| mv-expand stream_payload_msg.perfs\r\n| extend perfs_d = todynamic(stream_payload_msg_perfs)\r\n| project hookName = tostring(perfs_d.hook_name), maxValue = toint(perfs_d.p99), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| summarize val=percentile(maxValue/1000, 99) by hookName  // Get the maximum \"max\" value per hookName\r\n| top 10 by val desc\r\n| render barchart",
+                    "size": 1,
+                    "title": "99% hook latency [us]",
+                    "timeContext": {
+                      "durationMs": 86400000
+                    },
+                    "queryType": 0,
+                    "resourceType": "microsoft.operationalinsights/workspaces",
+                    "chartSettings": {
+                      "showMetrics": false,
+                      "ySettings": {
+                        "min": 0
+                      }
+                    }
+                  },
+                  "customWidth": "50",
+                  "name": "query - 12 - Copy"
+                },
+                {
+                  "type": 3,
+                  "content": {
+                    "version": "KqlItem/1.0",
+                    "query": "let timeStart = todatetime({timeparameter:start});\r\nlet timeEnd = todatetime({timeparameter:end});\r\njrtc_dashboard_CL\r\n| where stream_id_s == \"dashboard\"\r\n| extend stream_payload_msg=todynamic(stream_payload_msg_s)  // Expand the array of stats_s into individual rows\r\n| extend stream_index_s = tostring(stream_payload_msg.stream_index)\r\n| where stream_index_s == \"JBPF_STATS_REPORT\"\r\n| mv-expand stream_payload_msg.perfs\r\n| extend perfs_d = todynamic(stream_payload_msg_perfs)\r\n| project hookName = tostring(perfs_d.hook_name), maxValue = toint(perfs_d.p90), timestamp = unixtime_nanoseconds_todatetime(tolong(stream_payload_msg.timestamp))\r\n| where timestamp >= timeStart and timestamp <= timeEnd\r\n| summarize val=percentile(maxValue/1000, 90) by hookName  // Get the maximum \"max\" value per hookName\r\n| top 10 by val desc\r\n| render barchart",
+                    "size": 1,
+                    "title": "90% hook latency [us]",
+                    "timeContext": {
+                      "durationMs": 86400000
+                    },
+                    "queryType": 0,
+                    "resourceType": "microsoft.operationalinsights/workspaces",
+                    "chartSettings": {
+                      "showMetrics": false,
+                      "ySettings": {
+                        "min": 0
+                      }
+                    }
+                  },
+                  "customWidth": "50",
+                  "name": "query - 12 - Copy - Copy"
+                }
+              ]
+            },
+            "name": "group - 14"
+          }
+        ]
+      },
+      "conditionalVisibility": {
+        "parameterName": "selectedTab",
+        "comparison": "isEqualTo",
+        "value": "Other"
+      },
+      "name": "Other"
+    }
+  ],
+  "fallbackResourceIds": [
+    "/subscriptions/8bb381b1-de12-4fb7-a019-aeeeb2071090/resourceGroups/redmond-testbed-rg/providers/Microsoft.OperationalInsights/workspaces/janus-redmond"
+  ],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}

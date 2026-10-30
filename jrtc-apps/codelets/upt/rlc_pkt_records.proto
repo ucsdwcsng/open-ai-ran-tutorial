@@ -1,0 +1,22 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+syntax = "proto2";
+
+// One record per RLC DL SDU as it starts transmission. Lossless per packet;
+// batched into arrays of UPT_PKT_BATCH to keep the IO rate ~batch x lower than
+// per-packet streaming. bytes are intentionally NOT here: join to arrival by
+// (ue, rb, pdcp_sn) in the xApp - that is the slide-66 PDCP-SN join.
+message t_rlc_pkt {
+   required uint32 du_ue_index = 1;
+   required uint32 is_srb      = 2;
+   required uint32 rb_id       = 3;
+   required uint32 pdcp_sn     = 4;
+   required uint64 latency_ns  = 5;   // SDU arrival at RLC -> start of tx
+   required uint32 is_retx     = 6;
+   required uint32 queue_bytes = 7;   // RLC SDU-queue depth at this instant (free from ctx)
+}
+
+message rlc_pkt_records {
+   required uint64 timestamp = 1;     // ns, when this batch was flushed
+   repeated t_rlc_pkt pkts   = 2;     // up to UPT_PKT_BATCH records
+}

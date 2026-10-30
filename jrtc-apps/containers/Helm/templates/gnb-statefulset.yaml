@@ -1,0 +1,461 @@
+{{ $ran_cnt := 0 | int }}
+
+{{- range $ran_name, $values := .Values.duConfigs }}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: srs-gnb-cm-{{ $ran_name }}
+
+data:
+  config.json: |-
+      {{ $.Values | toJson }}
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: srs-gnb-{{ $ran_name }}
+  labels:
+    app: srs-gnb-{{ $ran_name }}
+    {{- include "ran-5g.labels" $ | nindent 4 }}
+spec:
+  serviceName: srs-service-gnb-{{ $ran_name }}
+  selector:
+    matchLabels:
+      app: srs-gnb-{{ $ran_name }}
+      {{- include "ran-5g.selectorLabels" $ | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app: srs-gnb-{{ $ran_name }}
+        {{- include "ran-5g.selectorLabels" $ | nindent 8 }}
+      annotations:
+        k8s.v1.cni.cncf.io/networks: '[
+              {
+                "name": "srs-sriov-cu"
+              }
+              {{- range $idx_c, $cell := $values.cells }}
+              ,{
+                "name": "srs-{{ $ran_name }}-sriov-fh-instance-{{ $idx_c }}"
+              }
+              {{- end }}
+            ]'
+
+    spec:
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+      serviceAccountName: srs-service-account
+      terminationGracePeriodSeconds: 0
+      volumes:
+      # ushasi - Fixed shared memory for k3d environment  
+      - name: dshm
+        hostPath:
+          path: /tmp/shared-memory
+          type: DirectoryOrCreate
+      # ushasi - End of shared memory fix
+      - name: hugepage
+        hostPath:
+          path: /dev/hugepages
+      - name: sys
+        hostPath:
+          path: /sys
+      - name: dev
+        hostPath:
+          path: /dev
+      - name: varjbpf
+        hostPath:
+          path: {{ printf "%s/%s" $.Values.jbpf.cfg.jbpf_run_path $.Values.jbpf.cfg.jbpf_namespace }}
+      - name: codelets
+        hostPath:
+          path: {{ $.Values.jbpf.codelets_vol_mount }}
+      - name: du-config-volume
+        configMap:
+          name: srs-gnb-cm-{{ $ran_name }}
+      # Ushasi - Additional volumes from docker-compose
+      - name: usb-devices
+        hostPath:
+          path: /dev/bus/usb
+      - name: uhd-images
+        hostPath:
+          path: /usr/share/uhd/images
+      - name: x11-unix
+        hostPath:
+          path: /tmp/.X11-unix
+      - name: srsran-source
+        hostPath:
+          path: {{ $.Values.srsran.source_path | default "__REPO_ROOT__/jrtc-apps/containers/Docker/srsRAN_Project" }}
+      - name: jrtc-utils
+        hostPath:
+          path: {{ $.Values.jrtc.utils_path | default "__REPO_ROOT__/jrtc-apps/utils" }}
+      - name: jrtc-apps-vol
+        hostPath:
+          path: {{ $.Values.jrtc_controller.apps_vol_mount | default "__REPO_ROOT__/jrtc-apps/jrtc_apps" }}
+      - name: jbpf-protobuf
+        hostPath:
+          path: {{ $.Values.jbpf_extended.protobuf_path | default "__REPO_ROOT__/jrtc-apps/jbpf_protobuf" }}
+      - name: env-file
+        hostPath:
+          path: {{ $.Values.jrtc.env_file_path | default "__REPO_ROOT__/jrtc-apps/.env" }}
+      - name: set-vars-script
+        hostPath:
+          path: {{ $.Values.jrtc.set_vars_path | default "__REPO_ROOT__/jrtc-apps/set_vars.sh" }}
+      - name: jrtc-config-host
+        hostPath:
+          path: /jrtc-config
+      # Ushasi - 5gc container volume
+      - name: open5gs-config
+        configMap:
+          name: open5gs-config-{{ $ran_name }}
+    # Ushasi - End of Additional volumes from docker-compose
+
+      {{- if (or (or $.Values.vlan_isolation.enabled (eq (int $.Values.jbpf.cfg.jbpf_enable_ipc) 1))  (and (not $.Values.debug_mode.enabled) $.Values.das.enabled) ) }}
+      initContainers:
+      
+      {{- if (and (not $.Values.debug_mode.enabled) $.Values.das.enabled) }}
+      # Init container to wait for RANBooster to start
+      - name: wait-for-das
+        image: {{ $.Values.troubleshooter.image }}
+        command:
+          - /bin/sh
+          - -c
+          - |
+              POD_NAME="srs-das-middlebox-{{ $.Values.das.dasboxes.das1.middlebox.dasName }}-0"
+              echo "*** Das Middlebox: ${POD_NAME}"             
+              while ! curl -s -k -X GET -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
+                -H "Content-Type: application/json" \
+                "https://kubernetes.default.svc/api/v1/namespaces/ran/pods/$POD_NAME/log" | \
+                grep -q 'Single core used, so running one thread'; do
+                  echo "*** Waiting for DAS middlebox to start..."
+                  sleep 2
+              done
+              echo "*** Das middlebox is ready"
+      {{- end }}
+
+      {{- if (and (not $.Values.debug_mode.enabled) (eq (int $.Values.jbpf.cfg.jbpf_enable_ipc) 1)) }}
+      - name: wait-for-jrtc
+        image: {{ $.Values.troubleshooter.image }}
+        env:
+          - name: NODE_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.hostIP
+        command:
+        - "/bin/bash"
+        - "-c"
+        - "until nc -z jrtc-service.ran.svc.cluster.local 3001 > /dev/null; do
+          echo Waiting for jrtc-service.ran.svc.cluster.local:3001;
+          sleep 2;
+          done;"
+      {{- end }}
+
+      {{- if $.Values.vlan_isolation.enabled }}
+      {{range $idx_c, $cell := $values.cells}}
+      # Init container to set VLANs for RUs using a custom API
+      - name: initvlan-{{ $idx_c }}
+        image: {{ $.Values.troubleshooter.image }}
+        env:
+        - name: MY_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        command:
+        - "/bin/bash"
+        - "-c"
+        - >
+          echo 'Waiting for VLANs to be set...' &&
+          curl -s --show-error -f -X PUT "http://{{ $.Values.vlan_isolation.url }}/tor_switch/assign_servers_to_ru?servers=$(MY_NODE_NAME)&ru={{ $cell.ruNAME }}" &&
+          echo 'All VLANs set, continuing'
+      {{end}}
+      {{- end }}
+
+      {{- end }}
+
+      containers:
+
+      {{- if  $.Values.troubleshooter.enabled }}
+      - name: troubleshooter
+        image: {{ $.Values.troubleshooter.image }}
+        command: [ "/bin/bash", "-c", "--" ]
+        args: [ "while true; do sleep 30; done;" ]
+      {{- end }}
+
+
+      - name: gnb
+        image: "{{ $.Values.image.srs_jbpf }}"
+        imagePullPolicy: "{{ $.Values.image.pullPolicy }}"
+        volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+        - name: hugepage
+          mountPath: /dev/hugepages
+        - name: sys
+          mountPath: /sys/
+        - name: dev
+          mountPath: /dev/
+        - name: varjbpf
+          mountPath: {{ printf "%s/%s" $.Values.jbpf.cfg.jbpf_run_path $.Values.jbpf.cfg.jbpf_namespace }}
+        - name: codelets
+          mountPath: /codelets
+        - name: du-config-volume
+          mountPath: /du-config
+          readOnly: true
+        # Additional volume mounts from docker-compose
+        - name: usb-devices
+          mountPath: /dev/bus/usb
+        - name: uhd-images
+          mountPath: /usr/share/uhd/images
+        - name: x11-unix
+          mountPath: /tmp/.X11-unix
+        - name: srsran-source
+          mountPath: /src
+        - name: jrtc-utils
+          mountPath: /out/utils
+        - name: jrtc-apps-vol
+          mountPath: /out/jrtc_apps
+        - name: jbpf-protobuf
+          mountPath: /out/jbpf_protobuf
+        - name: env-file
+          mountPath: /out/.env
+        - name: set-vars-script
+          mountPath: /out/set_vars.sh
+        - name: jrtc-config-host
+          mountPath: /jrtc-config
+
+
+        command: ["/bin/sh", "-c"]
+        {{- if  $.Values.debug_mode.enabled }}
+        args: [ "sleep 99999999d" ]
+        {{- else }}
+        # args: [ "/opt/Scripts/run.sh" ]
+        ### ushasi
+        args: [ "tail -f /dev/null" ]
+        ### ushasi
+        {{- end }}
+        env:
+          - name: DEBUG_MODE
+            value: "{{ $.Values.debug_mode.enabled }}"
+          - name: JBPF_CODELETS
+            value: "/codelets"
+        securityContext:
+          privileged: true
+          capabilities:
+            add:
+            - SYS_ADMIN
+            - IPC_LOCK
+            - SYS_NICE
+        tty: true
+        stdin: true
+
+
+        resources:
+          limits:
+            cpu: {{ $.Values.resources.gnb.limits.cpu }}
+            memory: {{ $.Values.resources.gnb.limits.memory }}
+            {{- if $.Values.resources.gnb.limits.hugepages1Gi }}
+            hugepages-1Gi: {{ $.Values.resources.gnb.limits.hugepages1Gi }}
+            {{- end }}
+            {{- if $.Values.sriov.resourceName }}
+            {{ $.Values.sriov.resourceName }}: 1
+            {{- end }}
+
+          {{ $c := 0 | int }}
+          {{range $cell := $values.cells}}
+            {{- if $cell.ruDPDKResource }}
+            {{ $cell.ruDPDKResource }}: 1
+            {{- end }}
+            {{ $c = add1 $c }}
+          {{- end }}
+
+
+          requests:
+            cpu: {{ $.Values.resources.gnb.requests.cpu }}
+            memory: {{ $.Values.resources.gnb.requests.memory }}
+            {{- if $.Values.resources.gnb.requests.hugepages1Gi }}
+            hugepages-1Gi: {{ $.Values.resources.gnb.requests.hugepages1Gi }}
+            {{- end }}
+            {{- if $.Values.sriov.resourceName }}
+            {{ $.Values.sriov.resourceName }}: 1
+            {{- end }}
+
+          {{ $c := 0 | int }}
+          {{range $cell := $values.cells}}
+            {{- if $cell.ruDPDKResource }}
+            {{ $cell.ruDPDKResource }}: 1
+            {{- end }}
+            {{ $c = add1 $c }}
+          {{- end }}
+
+
+      - name: srs-gnb-proxy
+        image: "{{ $.Values.image.srs_jbpf_proxy }}"
+        imagePullPolicy: "{{ $.Values.image.pullPolicy }}"
+        command: ["/src/out/bin/srsran_reverse_proxy"]
+        args:
+          - "--host-port"
+          - "{{ add $.Values.jbpf.port }}"
+          - "--address"
+          - "{{ printf "%s/%s/%s" $.Values.jbpf.cfg.jbpf_run_path $.Values.jbpf.cfg.jbpf_namespace $.Values.jbpf.cfg.jbpf_lcm_ipc_name }}"
+
+        resources:
+          limits:
+            {{- toYaml $.Values.resources.jbpf_proxy.limits | nindent 12 }}
+          requests:
+            {{- toYaml $.Values.resources.jbpf_proxy.requests | nindent 12 }}
+        volumeMounts:
+          - name: varjbpf
+            mountPath: {{ printf "%s/%s" $.Values.jbpf.cfg.jbpf_run_path $.Values.jbpf.cfg.jbpf_namespace }}
+          - name: codelets
+            mountPath: /codelets
+        env:
+          - name: JBPF_CODELETS
+            value: "/codelets"
+
+      {{- if $.Values.open5gs.enabled }}
+      # Ushasi - 5gc container
+      - name: open5gs-5gc
+        image: "{{ $.Values.open5gs.image }}"
+        imagePullPolicy: "{{ $.Values.image.pullPolicy }}"
+        command: ["5gc"]
+        args: ["-c", "/home/ogs-5gc/open5gs-5gc.yml"]
+        securityContext:
+          privileged: true
+          capabilities:
+            add:
+            - SYS_ADMIN
+            - IPC_LOCK
+            - SYS_NICE
+        volumeMounts:
+          - name: open5gs-config
+            mountPath: /home/ogs-5gc
+        env:
+          {{- if $.Values.open5gs.env_file }}
+          - name: ENV_FILE
+            value: "{{ $.Values.open5gs.env_file }}"
+          {{- end }}
+        resources:
+          limits:
+            {{- toYaml $.Values.resources.open5gs.limits | nindent 12 }}
+          requests:
+            {{- toYaml $.Values.resources.open5gs.requests | nindent 12 }}
+        ports:
+          - containerPort: 9999
+            protocol: TCP
+          {{- if $.Values.open5gs.expose_ngap }}
+          - containerPort: 38412
+            protocol: SCTP
+          - containerPort: 2152
+            protocol: UDP
+          {{- end }}
+        livenessProbe:
+          exec:
+            command:
+              - /bin/sh
+              - -c
+              - "nc -z 127.0.0.20 7777"
+          initialDelaySeconds: 10
+          periodSeconds: 3
+          timeoutSeconds: 1
+          failureThreshold: 60
+        readinessProbe:
+          exec:
+            command:
+              - /bin/sh
+              - -c  
+              - "nc -z 127.0.0.20 7777"
+          initialDelaySeconds: 5
+          periodSeconds: 3
+          timeoutSeconds: 1
+          failureThreshold: 60
+      # Ushasi - End of 5gc container
+      {{- end }}
+
+---
+
+# DNS name: janus-gnb-#-io-in.{{ $.Release.Namespace }}.svc.cluster.local
+kind: Service
+apiVersion: v1
+metadata:
+  name: srs-gnb-{{ $ran_name }}-io-in
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    app: srs-gnb-{{ $ran_name }}
+spec:
+  selector:
+    app: srs-gnb-{{ $ran_name }}
+  type: NodePort
+  ports:
+    - name: io-in-port
+      protocol: UDP
+      port: {{ add $.Values.jbpf.cfg.jbpf_standalone_io_in_port $ran_cnt }}
+      targetPort: {{ add $.Values.jbpf.cfg.jbpf_standalone_io_in_port $ran_cnt }}
+      nodePort: {{ add $.Values.jbpf.cfg.jbpf_standalone_io_in_port $ran_cnt }}
+
+
+---
+
+
+# DNS name: janus-gnb-#-agent.{{ $.Release.Namespace }}.svc.cluster.local
+kind: Service
+apiVersion: v1
+metadata:
+  name: srs-gnb-{{ $ran_name }}-proxy
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    app: srs-gnb-{{ $ran_name }}
+spec:
+  selector:
+    app: srs-gnb-{{ $ran_name }}
+  type: NodePort
+  ports:
+    - name: proxy-port
+      protocol: TCP
+      port: {{ add $.Values.jbpf.port $ran_cnt }}
+      targetPort: {{ add $.Values.jbpf.port $ran_cnt }}
+      nodePort: {{ add $.Values.jbpf.port $ran_cnt }}
+
+{{- if $.Values.open5gs.enabled }}
+# Ushasi - 5gc service
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: srs-gnb-{{ $ran_name }}-5gc
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    app: srs-gnb-{{ $ran_name }}
+spec:
+  selector:
+    app: srs-gnb-{{ $ran_name }}
+  type: NodePort
+  ports:
+    - name: amf-http-port
+      protocol: TCP
+      port: 9999
+      targetPort: 9999
+      nodePort: {{ add 30099 $ran_cnt }}
+    {{- if $.Values.open5gs.expose_ngap }}
+    - name: ngap-port
+      protocol: SCTP
+      port: 38412
+      targetPort: 38412
+      nodePort: {{ add 30412 $ran_cnt }}
+    - name: gtp-u-port
+      protocol: UDP
+      port: 2152
+      targetPort: 2152
+      nodePort: {{ add 30152 $ran_cnt }}
+    {{- end }}
+# Ushasi - End of 5gc service
+{{- end }}
+
+{{ $ran_cnt = add1 $ran_cnt }}
+
+{{- end }}
+
+
+
+
+

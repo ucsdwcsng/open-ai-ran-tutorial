@@ -1,0 +1,43 @@
+# ---------------------------------------------------------------------------
+# Build outputs only. Everything else (including all vendored upstream source
+# and its checked-in test fixtures) IS committed.
+#
+# Deliberately path-specific: broad *.o/*.so globs would wrongly drop ~780
+# legitimately checked-in binaries, e.g. the ebpf-verifier `ebpf-samples`
+# fixtures and ELFIO `elf_examples`.
+#
+# To rebuild what is ignored here:
+#   srsRAN gNB : kubectl exec -n ran srs-gnb-du1-0 -c gnb -- bash -c 'cd /src && ./make-ran.sh'
+#   srsUE      : cmake -DENABLE_ZEROMQ=ON ... && make -j8 srsue        (README step 6)
+#   codelets   : cd jrtc-apps/codelets && ./make.sh -d rlc
+# ---------------------------------------------------------------------------
+
+# srsRAN gNB / srsUE build trees (~470 MB)
+jrtc-apps/containers/Docker/srsRAN_Project/build/
+jrtc-apps/containers/Docker/srsRAN_Project/out/
+jrtc-apps/containers/Docker/srsRAN_Project/srs-4G-UE/build/
+
+# Packet captures (a 67 MB ue_mac_nr.pcap lived here) and runtime logs
+jrtc-apps/containers/Docker/srsRAN_Project/srs-4G-UE/pcaps/
+*.pcap
+*.pcapng
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+**/.venv/
+
+# Local overrides / editor cruft
+.env.local
+*.local.yaml
+.vscode/
+.idea/
+*.swp
+*~
+
+# NOTE: codelet build outputs (*.o, *.so, *.pb, generated *.py) are already
+# handled by jrtc-apps/codelets/.gitignore from upstream.
+
+# Codelet build artifacts (rebuild: cd jrtc-apps/codelets && ./make.sh -d <dir>)
+jrtc-apps/codelets/**/*.o

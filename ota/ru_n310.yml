@@ -1,0 +1,24 @@
+# USRP N310 over 10 GbE -- the radio for gnb_ota_tdd_n78_20mhz.yml:
+#   gnb -c gnb_ota_tdd_n78_20mhz.yml -c ru_n310.yml          (scripts/setup_ota.sh --sdr n310 --sdr-nic ...)
+# SFP+ port 1 at 192.168.20.2, as in ocudu-edgeric's ug_gnb_rf_n310_tdd_n78_20mhz.yml. Antennas on RF0:
+# TX/RX transmits, RX2 receives. The host NIC cabled to the N310 is moved into the gNB pod (MTU 9000);
+# see run_ota_cots.md.
+
+ru_sdr:
+  device_driver: uhd
+  device_args: type=n3xx,addr=192.168.20.2,master_clock_rate=122.88e6,send_frame_size=8000,recv_frame_size=8000,num_recv_frames=64,num_send_frames=64
+  # 122.88 MHz / 4. 23.04 MS/s has no integer ratio to 122.88 MHz; 61.44 (/ 2, what ocudu-edgeric used)
+  # also works, at twice the load on the link and the CPU.
+  srate: 30.72
+  # Analog gains in dB. 50/50 is ocudu-edgeric's over-the-air setting.
+  tx_gain: 50
+  rx_gain: 50
+  # With a 10 MHz + PPS reference on the REF/PPS inputs, or the internal GPSDO:
+  # clock: external              # or gpsdo
+  # sync: external               # or gpsdo
+
+# The USRP's free-running clock leaves a frequency offset in the uplink that the PUSCH channel
+# estimator has to absorb. With an external reference the defaults may do better.
+expert_phy:
+  pusch_channel_estimator_td_strategy: average
+  pusch_channel_estimator_cfo_compensation: true

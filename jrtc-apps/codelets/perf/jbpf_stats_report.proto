@@ -1,0 +1,19 @@
+syntax = "proto2";
+
+message jbpf_hook_perf {
+  required uint64 num = 1;
+  required uint64 min = 2;
+  required uint64 max = 3;
+  repeated uint32 hist = 4;
+  required uint64 p50 = 5;           // approximation of 50th percentile
+  required uint64 p90 = 6;           // approximation of 90th percentile
+  required uint64 p95 = 7;           // approximation of 95th percentile
+  required uint64 p99 = 8;           // approximation of 99th percentile
+  required string hook_name = 9;
+}
+
+message jbpf_out_perf_list {
+    required uint64 timestamp = 1;
+    required uint32 meas_period = 2;
+    repeated jbpf_hook_perf hook_perf = 3;
+}

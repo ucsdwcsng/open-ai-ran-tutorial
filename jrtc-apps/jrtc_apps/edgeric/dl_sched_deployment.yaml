@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../tools/schemas/jrtc-ctl..schema.json
+#
+# EdgeRIC-on-Janus DL scheduling: loads the edgeric_sched codeletset (dl_sched on
+# the mac_sched_dl_ctrl hook) and the dl_sched_app muApp (Max-Weight over telemetry,
+# pushing per-UE weights back into the codelet).
+
+name: edgeric_sched
+
+decoder:
+  - type: decodergrpc
+    host: jrtc-decoder.ran.svc.cluster.local
+    port: 20789
+
+app:
+  - name: dl_sched_app
+    path: ${JRTC_APPS}/edgeric/dl_sched_app.py
+    type: python
+    host: jrtc-service.ran.svc.cluster.local
+    port: 3001
+    modules:
+      - ${JBPF_CODELETS}/edgeric/dl_sched_report.py
+
+jbpf:
+  device:
+    - id: 1
+      host: srs-gnb-du1-proxy.ran.svc.cluster.local
+      port: 30450
+
+  codelet_set:
+    - device: 1
+      config: ${JBPF_CODELETS}/edgeric/edgeric_sched.yaml

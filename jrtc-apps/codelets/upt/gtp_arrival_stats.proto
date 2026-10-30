@@ -1,0 +1,18 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+syntax = "proto2";
+
+// DL user-plane arrival, bucketed. One entry per (UE, radio bearer) per bucket.
+message t_gtp_arrival_item {
+   required uint32 cu_ue_index = 1;
+   required uint32 is_srb      = 2;
+   required uint32 rb_id       = 3;
+   required uint32 pkt_count   = 4;   // packets that arrived in this bucket
+   required uint64 byte_count  = 5;   // bytes that arrived in this bucket
+}
+
+message gtp_arrival_stats {
+   required uint64 timestamp = 1;   // ns, when the bucket was closed
+   required uint64 bucket_id = 2;   // timestamp >> UPT_BUCKET_SHIFT
+   repeated t_gtp_arrival_item stats = 3;
+}

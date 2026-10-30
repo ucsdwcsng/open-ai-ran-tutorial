@@ -1,0 +1,45 @@
+{
+ "name": "expD_fade_289k",
+ "title": "fade: static 289k, CUBIC, PDCP discard off",
+ "scenario": "fade",
+ "policy": "289k",
+ "duration": 123,
+ "settle": 3,
+ "window": [
+  8,
+  123
+ ],
+ "ues": [
+  {
+   "label": "UE",
+   "container": "durue1",
+   "du_index": "auto"
+  }
+ ],
+ "flows": [
+  {
+   "name": "bulk",
+   "ue": 0,
+   "cc": "cubic",
+   "start": 3
+  }
+ ],
+ "events": [
+  {
+   "t": 0,
+   "bufcap": "289k"
+  },
+  {
+   "t": 0,
+   "radio": "10 fade 200 1000"
+  },
+  {
+   "t": 122,
+   "radio": "good"
+  },
+  {
+   "t": 122,
+   "bufcap": "off"
+  }
+ ]
+}

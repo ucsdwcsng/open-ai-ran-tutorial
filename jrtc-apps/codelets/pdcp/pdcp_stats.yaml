@@ -1,0 +1,155 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+codeletset_id: pdcp_stats
+
+codelet_descriptor:
+
+  - codelet_name: pdcp_collect
+    codelet_path: ${JBPF_CODELETS}/pdcp/pdcp_collect.o
+    hook_name: report_stats
+    priority: 1
+    out_io_channel:
+      - name: output_map_dl
+        forward_destination: DestinationNone
+        serde:
+          file_path: ${JBPF_CODELETS}/pdcp/pdcp_dl_stats:dl_stats_serializer.so
+          protobuf:
+            package_path: ${JBPF_CODELETS}/pdcp/pdcp_dl_stats.pb
+            msg_name: dl_stats
+      - name: output_map_ul
+        forward_destination: DestinationNone
+        serde:
+          file_path: ${JBPF_CODELETS}/pdcp/pdcp_ul_stats:ul_stats_serializer.so
+          protobuf:
+            package_path: ${JBPF_CODELETS}/pdcp/pdcp_ul_stats.pb
+            msg_name: ul_stats
+
+  - codelet_name: pdcp_dl_new_sdu
+    codelet_path: ${JBPF_CODELETS}/pdcp/pdcp_dl_new_sdu.o
+    hook_name: pdcp_dl_new_sdu
+    priority: 1
+    linked_maps:
+      - map_name: stats_map_dl
+        linked_codelet_name: pdcp_collect
+        linked_map_name: stats_map_dl
+      - map_name: dl_not_empty
+        linked_codelet_name: pdcp_collect
+        linked_map_name: dl_not_empty
+      - map_name: dl_hash
+        linked_codelet_name: pdcp_collect
+        linked_map_name: dl_hash
+
+  - codelet_name: pdcp_dl_deletion
+    codelet_path: ${JBPF_CODELETS}/pdcp/pdcp_dl_deletion.o
+    hook_name: pdcp_dl_deletion
+    priority: 1
+    linked_maps:
+      - map_name: stats_map_dl
+        linked_codelet_name: pdcp_collect
+        linked_map_name: stats_map_dl
+      - map_name: dl_hash
+        linked_codelet_name: pdcp_collect
+        linked_map_name: dl_hash
+
+  - codelet_name: pdcp_ul_deletion
+    codelet_path: ${JBPF_CODELETS}/pdcp/pdcp_ul_deletion.o
+    hook_name: pdcp_ul_deletion
+    priority: 1
+    linked_maps:
+      - map_name: stats_map_ul
+        linked_codelet_name: pdcp_collect
+        linked_map_name: stats_map_ul
+      - map_name: ul_hash
+        linked_codelet_name: pdcp_collect
+        linked_map_name: ul_hash
+
+  - codelet_name: pdcp_dl_tx_data_pdu
+    codelet_path: ${JBPF_CODELETS}/pdcp/pdcp_dl_tx_data_pdu.o
+    hook_name: pdcp_dl_tx_data_pdu
+    priority: 1
+    linked_maps:
+      - map_name: stats_map_dl
+        linked_codelet_name: pdcp_collect
+        linked_map_name: stats_map_dl
+      - map_name: dl_not_empty
+        linked_codelet_name: pdcp_collect
+        linked_map_name: dl_not_empty
+      - map_name: dl_hash
+        linked_codelet_name: pdcp_collect
+        linked_map_name: dl_hash
+
+  - codelet_name: pdcp_dl_tx_control_pdu
+    codelet_path: ${JBPF_CODELETS}/pdcp/pdcp_dl_tx_control_pdu.o
+    hook_name: pdcp_dl_tx_control_pdu
+    priority: 1
+    linked_maps:
+      - map_name: stats_map_dl
+        linked_codelet_name: pdcp_collect
+        linked_map_name: stats_map_dl
+      - map_name: dl_not_empty
+        linked_codelet_name: pdcp_collect
+        linked_map_name: dl_not_empty
+      - map_name: dl_hash
+        linked_codelet_name: pdcp_collect
+        linked_map_name: dl_hash
+
+  - codelet_name: pdcp_dl_discard
+    codelet_path: ${JBPF_CODELETS}/pdcp/pdcp_dl_discard.o
+    hook_name: pdcp_dl_discard_pdu
+    priority: 1
+    linked_maps:
+      - map_name: stats_map_dl
+        linked_codelet_name: pdcp_collect
+        linked_map_name: stats_map_dl
+      - map_name: dl_not_empty
+        linked_codelet_name: pdcp_collect
+        linked_map_name: dl_not_empty
+      - map_name: dl_hash
+        linked_codelet_name: pdcp_collect
+        linked_map_name: dl_hash
+
+  - codelet_name: pdcp_ul_rx_data_pdu
+    codelet_path: ${JBPF_CODELETS}/pdcp/pdcp_ul_rx_data_pdu.o
+    hook_name: pdcp_ul_rx_data_pdu
+    priority: 1
+    linked_maps:
+      - map_name: ul_not_empty
+        linked_codelet_name: pdcp_collect
+        linked_map_name: ul_not_empty
+      - map_name: stats_map_ul
+        linked_codelet_name: pdcp_collect
+        linked_map_name: stats_map_ul
+      - map_name: ul_hash
+        linked_codelet_name: pdcp_collect
+        linked_map_name: ul_hash
+
+  - codelet_name: pdcp_ul_rx_control_pdu
+    codelet_path: ${JBPF_CODELETS}/pdcp/pdcp_ul_rx_control_pdu.o
+    hook_name: pdcp_ul_rx_control_pdu
+    priority: 1
+    linked_maps:
+      - map_name: ul_not_empty
+        linked_codelet_name: pdcp_collect
+        linked_map_name: ul_not_empty
+      - map_name: stats_map_ul
+        linked_codelet_name: pdcp_collect
+        linked_map_name: stats_map_ul
+      - map_name: ul_hash
+        linked_codelet_name: pdcp_collect
+        linked_map_name: ul_hash
+
+  - codelet_name: pdcp_ul_deliver_sdu
+    codelet_path: ${JBPF_CODELETS}/pdcp/pdcp_ul_deliver_sdu.o
+    hook_name: pdcp_ul_deliver_sdu
+    priority: 1
+    linked_maps:
+      - map_name: ul_not_empty
+        linked_codelet_name: pdcp_collect
+        linked_map_name: ul_not_empty
+      - map_name: stats_map_ul
+        linked_codelet_name: pdcp_collect
+        linked_map_name: stats_map_ul
+      - map_name: ul_hash
+        linked_codelet_name: pdcp_collect
+        linked_map_name: ul_hash

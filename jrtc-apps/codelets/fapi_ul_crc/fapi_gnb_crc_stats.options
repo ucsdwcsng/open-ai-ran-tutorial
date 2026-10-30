@@ -1,0 +1,5 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+crc_stats.stats                 max_count:32
+t_rnti_stats.l1_crc_ta_hist     max_count:8
+t_rnti_stats.l1_crc_snr_hist    max_count:8

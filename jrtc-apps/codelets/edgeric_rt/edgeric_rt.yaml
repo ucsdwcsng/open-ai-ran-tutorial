@@ -1,0 +1,33 @@
+# Copyright (c) Microsoft Corporation. Licensed under the MIT license.
+#
+# EdgeRIC-RT: per-TTI synchronized DL scheduling (EdgeRIC NSDI'24, RT-E2 over jbpf).
+#
+#   rt_report  on mac_sched_slot_report: every TTI, the RANtime-tagged state of every UE -> out_rt_report
+#   rt_ctrl    on mac_sched_slot_ctrl (CONTROL): muApp actions in on rt_act_in, applied only in the exact
+#              TTI they target; any other slot runs the stock scheduler.
+#
+# Only one codelet can attach to a control hook. The older asynchronous edgeric_sched / edgeric_mcs sets
+# (and badchan) act on other hooks in the same scheduler; unload them while this set is loaded.
+
+codeletset_id: edgeric_rt
+
+codelet_descriptor:
+  - codelet_name: rt_report
+    codelet_path: ${JBPF_CODELETS}/edgeric_rt/rt_report.o
+    hook_name: mac_sched_slot_report
+    priority: 1
+    out_io_channel:
+      - name: out_rt_report
+        forward_destination: DestinationNone
+        serde:
+          file_path: ${JBPF_CODELETS}/edgeric_rt/rt_report:rt_report_serializer.so
+          protobuf:
+            package_path: ${JBPF_CODELETS}/edgeric_rt/rt_report.pb
+            msg_name: rt_report
+
+  - codelet_name: rt_ctrl
+    codelet_path: ${JBPF_CODELETS}/edgeric_rt/rt_ctrl.o
+    hook_name: mac_sched_slot_ctrl
+    priority: 1
+    in_io_channel:
+      - name: rt_act_in

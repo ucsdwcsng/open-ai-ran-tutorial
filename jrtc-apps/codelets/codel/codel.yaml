@@ -1,0 +1,14 @@
+codeletset_id: codel
+codelet_descriptor:
+  - codelet_name: codel_rate
+    codelet_path: ${JBPF_CODELETS}/codel/codel_rate.o
+    hook_name: rlc_dl_sdu_send_completed
+    priority: 1
+  - codelet_name: l4span_mark
+    codelet_path: ${JBPF_CODELETS}/l4span/l4span_mark.o
+    hook_name: pdcp_dl_sdu_segment
+    priority: 1
+    linked_maps:
+      - map_name: l4s_map
+        linked_codelet_name: codel_rate
+        linked_map_name: l4s_map

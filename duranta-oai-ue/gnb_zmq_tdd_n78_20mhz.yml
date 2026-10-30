@@ -1,0 +1,124 @@
+# OCUDU (jbpf) gNB in ZMQ emulation mode for OAI (Duranta) UEs, band n78, 20 MHz TDD -- k3d.
+# ocudu-edgeric configs/gnb_zmq_tdd_n78_20mhz.yml, with only the k3d-specific parts changed:
+#   - core: the in-cluster Open5GS (PLMN 99970), N3 bound to the pod IP (rewritten at start-up)
+#   - ru_sdr: tx 2101 / rx 2100, towards duranta-oai-ue/multi_ue_broker.py in the grbroker container
+#   - nof_antennas_dl/ul: 1 (else the OAI UE computes max_mimo_layers=0 and crashes on DCI 1_1)
+#   - the jbpf block from ocudu-jbpf/deploy/gnb_ocudu_jbpf.yml
+#   - expert_phy.max_proc_delay 8 (ZMQ real-time headroom)
+#   - TDD: 7 DL : 3 UL (10-slot period: 7 DL + special [4 guard / 10 UL symbols] + 2 UL)
+# Used by scripts/setup_zmq_chan_demo.sh.
+
+cu_cp:
+  amf:
+    addr: open5gs-amf-ngap.open5gs.svc.cluster.local
+    port: 38412
+    bind_addr: 0.0.0.0
+    supported_tracking_areas:
+      - tac: 1
+        plmn_list:
+          - plmn: "99970"
+            tai_slice_support_list:
+              - sst: 1
+  max_nof_ues: 64
+  inactivity_timer: 7200
+  request_pdu_session_timeout: 30
+
+cu_up:
+  ngu:
+    socket:
+      - bind_addr: 10.42.0.92        # N3: the gNB pod IP; setup_zmq_chan_demo.sh rewrites it at start-up
+
+ru_sdr:
+  device_driver: zmq
+  device_args: tx_port=tcp://127.0.0.1:2101,rx_port=tcp://127.0.0.1:2100,base_srate=23.04e6
+  srate: 23.04
+  # OCUDU drives the DAC at full scale; OAI's fixed-point FFT needs the peak well below it.
+  tx_gain: -12
+  rx_gain: 0
+
+cell_cfg:
+  dl_arfcn: 632628                   # 3489.42 MHz, matches the UE's C = 3489420000
+  band: 78
+  channel_bandwidth_MHz: 20
+  common_scs: 30
+  plmn: "99970"
+  tac: 1
+  pci: 1
+  nof_antennas_dl: 1
+  nof_antennas_ul: 1
+  tdd_ul_dl_cfg:                     # 7 DL : 3 UL, as ocudu-gnb/configs/ug_gnb_dl_heavy_n310_tdd.yml
+    dl_ul_tx_period: 10              # 10 slots @ 30 kHz SCS = 5 ms period
+    nof_dl_slots: 7                  # 7 full DL slots (slots 0-6)
+    nof_dl_symbols: 0                # special slot (slot 7) starts with the guard period
+    nof_ul_slots: 2                  # 2 full UL slots (slots 8-9)
+    nof_ul_symbols: 10               # + 10 UL symbols in the special slot (4 symbols guard)
+  csi:
+    csi_rs_enabled: true             # note: OAI UE does not handle TRS
+  pucch:
+    nof_cell_csi_res: 1
+  pdsch:
+    # Needed on any non-clean channel (fading, added noise). The OAI UE's CQI report does not reflect
+    # its own demodulation loss: it keeps reporting CQI ~12 and measuring ~20 dB SINR while only
+    # sustaining MCS 3-10. Outer-loop link adaptation has to close that whole gap, and OCUDU's 4.0
+    # default caps how far it may, so the scheduler stays ~5-10 MCS too high and DL BLER sits at
+    # 25-45% instead of the ~1% target. Measured on a TDL-C 300 ns channel at 20 dB SNR: BLER
+    # 42.5% -> 1.2%, and throughput 14.0 -> 19.3 Mbps, because retransmissions stop wasting slots.
+    # Harmless on a clean cabled/ZMQ link, where OLLA never needs the extra range.
+    olla_max_cqi_offset: 10.0
+    olla_target_bler: 0.03
+  pusch:
+    # Same reasoning as pdsch.olla_max_cqi_offset above, for the UL (default 5.0).
+    olla_max_snr_offset: 20.0
+    # Must be 2 for the OAI UE. OCUDU sends the first PUSCH grants after RRC setup
+    # (RRCSetupComplete, Registration Request) as DCI 0_0 and, per TS 38.214 6.2.2,
+    # assumes pos2 DMRS for them; the OAI UE instead applies this dedicated value
+    # to DCI 0_0 too. Any other value leaves the two ends on different DMRS symbols
+    # and TBS, every PUSCH fails CRC, and the UE loops on "max RETX reached on SRB 1".
+    dmrs_additional_position: 2
+
+expert_phy:
+  # DL may be processed up to 8 slots ahead (default 5): more lookahead for the lock-step ZMQ loop.
+  max_proc_delay: 8
+
+log:
+  filename: /tmp/gnb.log
+  all_level: warning
+
+pcap:
+  mac_enable: false
+  mac_filename: /tmp/gnb_zmq_mac.pcap
+  ngap_enable: false
+  ngap_filename: /tmp/gnb_zmq_ngap.pcap
+
+remote_control:
+  enabled: true
+  bind_addr: 127.0.0.1
+  port: 55555
+
+metrics:
+  enable_json: true
+  autostart_stdout_metrics: true
+  layers:
+    enable_sched: true
+    enable_mac: true
+    enable_rlc: true
+    enable_pdcp: true
+    enable_ngap: true
+
+jbpf:
+  jbpf_run_path: "/tmp"
+  jbpf_namespace: "jbpf"
+  jbpf_enable_ipc: 1
+  jbpf_standalone_io_out_ip: "127.0.0.1"
+  jbpf_standalone_io_out_port: 20788
+  jbpf_standalone_io_in_port: 30400
+  jbpf_io_mem_size_mb: 1024
+  jbpf_ipc_mem_name: "jrt_controller"
+  jbpf_enable_lcm_ipc: 1
+  jbpf_lcm_ipc_name: "jbpf_lcm_ipc"
+  jbpf_agent_cpu: 0
+  jbpf_agent_policy: 0
+  jbpf_agent_priority: 0
+  jbpf_maint_cpu: 0
+  jbpf_maint_policy: 0
+  jbpf_maint_priority: 0

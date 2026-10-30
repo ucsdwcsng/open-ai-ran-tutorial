@@ -1,0 +1,5 @@
+# CLI <-> xApp transport, not source: recreated at run time, safe to delete.
+state.json
+state.json.tmp
+commands.jsonl
+events.jsonl

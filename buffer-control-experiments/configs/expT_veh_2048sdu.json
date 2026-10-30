@@ -1,0 +1,43 @@
+{
+ "name": "expT_veh_2048sdu",
+ "title": "Trace 'veh' (100 s), static cap 2048 SDU x 1470 B = 2940k, cubic",
+ "duration": 103,
+ "settle": 3,
+ "window": [
+  8,
+  103
+ ],
+ "ues": [
+  {
+   "label": "UE",
+   "container": "durue1",
+   "du_index": "auto"
+  }
+ ],
+ "flows": [
+  {
+   "name": "bulk",
+   "ue": 0,
+   "cc": "cubic",
+   "start": 3
+  }
+ ],
+ "events": [
+  {
+   "t": 0,
+   "bufcap": "2940k"
+  },
+  {
+   "t": 0,
+   "radio": "trace veh"
+  },
+  {
+   "t": 102,
+   "radio": "good"
+  },
+  {
+   "t": 102,
+   "bufcap": "off"
+  }
+ ]
+}

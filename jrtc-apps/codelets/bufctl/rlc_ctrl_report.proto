@@ -1,0 +1,18 @@
+// Copyright (c) Microsoft Corporation. Licensed under the MIT license.
+//
+// Report from the rlc_ctrl control codelet (rlc_dl_ctrl hook), one message per
+// (UE, DRB) event: a GET was requested, a RESET was applied, or the limits in
+// force changed. cfg_* are the bearer's configured limits, so an xApp can show
+// "current vs default" and reset without knowing the config.
+syntax = "proto2";
+
+message rlc_ctrl_report {
+   required uint64 timestamp      = 1;   // ns, jbpf_time_get_ns()
+   required uint32 du_ue_index    = 2;
+   required uint32 rb_id          = 3;   // DRB id
+   required uint32 cur_byte_limit = 4;   // byte limit in force
+   required uint32 cur_sdu_limit  = 5;   // SDU limit in force
+   required uint32 cfg_byte_limit = 6;   // configured byte limit (queue-bytes)
+   required uint32 cfg_sdu_limit  = 7;   // configured SDU limit (queue-size)
+   required uint32 reason         = 8;   // 0 = changed, 1 = GET, 2 = RESET
+}

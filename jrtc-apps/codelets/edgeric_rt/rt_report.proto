@@ -1,0 +1,54 @@
+// Copyright (c) Microsoft Corporation. Licensed under the MIT license.
+syntax = "proto2";
+
+// EdgeRIC-RT per-TTI report (mac_sched_slot_report). The gNB fills a C struct with exactly the layout
+// nanopb generates for rt_report (rt_wire.h: rt_report_ctx), and the codelet outputs it as is, so
+// fields must stay in this order: uint64 fields first, uint32 fields, then the repeated ue last.
+
+// State of one UE in this slot.
+message rt_ue {
+   required uint32 du_ue_index      = 1;
+   required uint32 rnti             = 2;
+   required uint32 cqi              = 3;   // last reported wideband CQI
+   required uint32 eff_cqi_x100     = 4;   // CQI after the OLLA offset, x100
+   required uint32 olla_mcs         = 5;   // MCS link adaptation would pick now (qam64 table)
+   required uint32 dl_pending_bytes = 6;   // DL backlog after this slot's grants
+   required uint32 free_harqs       = 7;   // empty DL HARQ processes
+   required uint32 dl_prbs          = 8;   // PRBs granted this slot (newTx + reTx)
+   required uint32 newtx_tbs        = 9;   // TB bytes of new transmissions this slot
+   required uint32 retx_tbs         = 10;  // TB bytes of retransmissions this slot
+   required uint32 dl_mcs           = 11;  // MCS granted this slot
+   required uint32 drb_bytes        = 12;  // DRB SDU bytes scheduled this slot (the throughput reward)
+   required uint32 rb_quota         = 13;  // RB quota from the applied action
+   required uint32 weight           = 14;  // weight from the applied action
+   required uint32 flags            = 15;  // JBPF_RT_UE_* outcome flags
+}
+
+message rt_report {
+   required uint64 t_slot_ns           = 1;   // CLOCK_MONOTONIC at slot start
+   required uint64 t_report_ns         = 2;   // CLOCK_MONOTONIC when emitted
+   required uint64 act_t_src_report_ns = 3;   // echo of the applied action
+   required uint64 act_t_sent_ns       = 4;   // echo of the applied action
+   required uint32 ran_tti             = 5;   // RANtime of this slot
+   required uint32 sfn                 = 6;
+   required uint32 slot                = 7;
+   required uint32 is_dl               = 8;
+   required uint32 dl_mask             = 9;   // bit k: slot ran_tti + k carries DL
+   required uint32 dl_rbs_avail        = 10;  // RBs available to DL newTx (R_total)
+   required uint32 dl_rbs_used         = 11;  // RBs granted to UE PDSCHs
+   required uint32 n_weighted          = 12;  // UEs with a weight in the applied action
+   required uint32 n_sel               = 13;  // UEs granted on the EdgeRIC path
+   required uint32 act_status          = 14;  // 0 NONE (stock scheduler), 1 HIT, 2 HOLD
+   required uint32 act_seq             = 15;  // seq of the applied action
+   required uint32 act_tti             = 16;
+   required uint32 act_src_tti         = 17;
+   required uint32 act_flags           = 18;
+   required uint32 n_rx                = 19;  // codelet counters, cumulative
+   required uint32 n_late              = 20;
+   required uint32 n_early             = 21;
+   required uint32 n_overwritten       = 22;
+   required uint32 n_bad               = 23;
+   required uint32 n_hit               = 24;
+   required uint32 cell_id             = 25;
+   repeated rt_ue  ue                  = 26;  // every UE of the cell, up to 16
+}

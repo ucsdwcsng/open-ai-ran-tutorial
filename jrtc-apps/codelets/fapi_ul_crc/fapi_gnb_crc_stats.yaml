@@ -1,0 +1,34 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+codeletset_id: fapi_gnb_crc_stats
+
+codelet_descriptor:
+
+  - codelet_name: codelet1
+    codelet_path: ${JBPF_CODELETS}/fapi_ul_crc/fapi_gnb_crc_stats_collect.o
+    hook_name: fapi_crc_indication
+    priority: 1
+
+  - codelet_name: codelet2
+    codelet_path: ${JBPF_CODELETS}/fapi_ul_crc/fapi_gnb_crc_stats_report.o
+    hook_name: report_stats
+    priority: 1
+    out_io_channel:
+      - name: output_map
+        forward_destination: DestinationNone
+        serde:
+          file_path: ${JBPF_CODELETS}/fapi_ul_crc/fapi_gnb_crc_stats:crc_stats_serializer.so
+          protobuf:
+            package_path: ${JBPF_CODELETS}/fapi_ul_crc/fapi_gnb_crc_stats.pb
+            msg_name: crc_stats
+    linked_maps:
+      - map_name: stats_map
+        linked_codelet_name: codelet1
+        linked_map_name: stats_map
+      - map_name: rnti_hash
+        linked_codelet_name: codelet1
+        linked_map_name: rnti_hash
+      - map_name: not_empty
+        linked_codelet_name: codelet1
+        linked_map_name: not_empty

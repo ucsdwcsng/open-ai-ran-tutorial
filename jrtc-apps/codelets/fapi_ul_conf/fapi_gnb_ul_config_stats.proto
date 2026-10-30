@@ -1,0 +1,32 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
+syntax = "proto2";
+
+message t_rnti_stats { 
+    required uint32 cell_id = 1;
+    required uint32 rnti = 2;
+    required uint32 l1_cnt = 3;
+    required uint32 l1_ulc_tx = 4;
+    required uint32 l1_prb_min = 5;
+    required uint32 l1_prb_max = 6;
+    required uint32 l1_prb_avg = 7;
+    required uint32 l1_tbs_min = 8;
+    required uint32 l1_tbs_max = 9;
+    required uint32 l1_tbs_avg = 10;
+    required uint32 l1_mcs_min = 11;
+    required uint32 l1_mcs_max = 12;
+    required uint32 l1_mcs_avg = 13;
+    required uint32 l1_ant_avg = 14;
+    repeated uint32 l1_ulc_prb_hist = 15;
+    repeated uint32 l1_ulc_mcs_hist = 16;
+    repeated uint32 l1_ulc_tbs_hist = 17;
+    repeated uint32 l1_ulc_ant_hist = 18;
+}
+
+message ul_config_stats {
+    required uint64 timestamp = 1;
+    repeated t_rnti_stats stats = 2;
+}
+
+

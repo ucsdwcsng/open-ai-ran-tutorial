@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=../../tools/schemas/jrtc-ctl..schema.json
+
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+name: fapi
+
+decoder:
+  - type: decodergrpc
+    port: 30501
+    #port: 20789
+
+jbpf:
+  device:
+    - id: 1
+      port: 30450
+
+  codelet_set:
+    - device: 1
+      config: ${JBPF_CODELETS}/fapi_dl_conf/fapi_gnb_dl_config_stats.yaml
+    - device: 1
+      config: ${JBPF_CODELETS}/fapi_ul_conf/fapi_gnb_ul_config_stats.yaml
+    - device: 1
+      config: ${JBPF_CODELETS}/fapi_ul_crc/fapi_gnb_crc_stats.yaml
+    - device: 1
+      config: ${JBPF_CODELETS}/fapi_rach/fapi_gnb_rach_stats.yaml

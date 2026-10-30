@@ -1,0 +1,37 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+syntax = "proto2";
+
+// One UE over one bucket (1 << 27 ns) of mac_sched_slot_report slots.
+message rts_ue {
+   required uint32 du_ue_index  = 1;
+   required uint32 rnti         = 2;
+   required uint32 slots        = 3;    // slot reports the UE was in (0: entry unused)
+   required uint32 cqi_sum      = 4;    // wideband CQI, summed over those reports (0 before the first CSI report)
+   required uint32 cqi_min      = 5;
+   required uint32 cqi_max      = 6;
+   required uint64 backlog_sum  = 7;    // DL pending bytes over all logical channels, summed over the reports
+   required uint32 backlog_max  = 8;
+   required uint32 backlog_last = 9;
+   required uint32 drb_bytes    = 10;   // DRB bytes in the UE's PDSCH grants (no MAC headers or padding)
+   required uint32 newtx_bytes  = 11;   // new transport blocks
+   required uint32 retx_bytes   = 12;   // retransmitted transport blocks
+   required uint32 prbs         = 13;   // DL PRBs granted
+   required uint32 grant_slots  = 14;   // DL slots with a grant for the UE
+   required uint32 mcs_sum      = 15;   // DL MCS, summed over grant_slots
+}
+
+message rts_stats {
+   required uint64 timestamp = 1;   // ns, when the bucket was closed
+   required uint64 bucket_id = 2;   // timestamp >> UPT_BUCKET_SHIFT
+   required uint32 cell_id   = 3;
+   required uint32 slots     = 4;   // slot reports in the bucket
+   required uint32 dl_slots  = 5;
+   required uint32 hit       = 6;   // DL slots that applied a muApp action meant for exactly that TTI
+   required uint32 hold      = 7;   // DL slots that re-applied the last one
+   required uint32 rbs_avail = 8;   // DL PRBs left for new transmissions, summed over the DL slots
+   required uint32 rbs_used  = 9;   // DL PRBs granted, summed over the DL slots
+   required uint32 tti_first = 10;  // RANtime of the first and last slot in the bucket
+   required uint32 tti_last  = 11;
+   repeated rts_ue ue        = 12;  // indexed by du_ue_index % 16
+}

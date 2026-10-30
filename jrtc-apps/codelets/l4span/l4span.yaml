@@ -1,0 +1,25 @@
+# Copyright (c) Microsoft Corporation. Licensed under the MIT license.
+#
+# L4Span: in-RAN L4S ECN marking. l4span_rate turns RLC queuing delay into a
+# global marking probability (shared map); l4span_mark sets ECN CE on DL DRB
+# IP packets with that probability, in place, fixing the IPv4 checksum.
+
+codeletset_id: l4span
+
+codelet_descriptor:
+
+  # congestion signal: RLC queuing delay -> global marking probability
+  - codelet_name: l4span_rate
+    codelet_path: ${JBPF_CODELETS}/l4span/l4span_rate.o
+    hook_name: rlc_dl_sdu_send_completed
+    priority: 1
+
+  # actuator: mark ECN CE on DL DRB IP packets (reads l4span_rate's map)
+  - codelet_name: l4span_mark
+    codelet_path: ${JBPF_CODELETS}/l4span/l4span_mark.o
+    hook_name: pdcp_dl_sdu_segment
+    priority: 1
+    linked_maps:
+      - map_name: l4s_map
+        linked_codelet_name: l4span_rate
+        linked_map_name: l4s_map

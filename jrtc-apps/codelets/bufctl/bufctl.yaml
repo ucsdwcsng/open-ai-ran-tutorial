@@ -1,0 +1,29 @@
+# Copyright (c) Microsoft Corporation. Licensed under the MIT license.
+#
+# bufctl -- RLC DL buffer-size control (SET / GET / RESET) on the rlc_dl_ctrl hook.
+#
+# One codelet, two channels: commands in on ctrl_in, reports out on out_rlc_ctrl.
+# Load it only while commanding: while loaded, the hook runs on every DL packet of
+# every AM DRB. Unloading leaves the applied limits in place (send RESET first to
+# restore the configured sizes).
+#
+# Only ONE codelet can attach to a control hook, so this set is mutually exclusive
+# with any other codeletset that also attaches to rlc_dl_ctrl.
+
+codeletset_id: bufctl
+
+codelet_descriptor:
+  - codelet_name: rlc_ctrl
+    codelet_path: ${JBPF_CODELETS}/bufctl/rlc_ctrl.o
+    hook_name: rlc_dl_ctrl
+    priority: 1
+    in_io_channel:
+      - name: ctrl_in
+    out_io_channel:
+      - name: out_rlc_ctrl
+        forward_destination: DestinationNone
+        serde:
+          file_path: ${JBPF_CODELETS}/bufctl/rlc_ctrl_report:rlc_ctrl_report_serializer.so
+          protobuf:
+            package_path: ${JBPF_CODELETS}/bufctl/rlc_ctrl_report.pb
+            msg_name: rlc_ctrl_report

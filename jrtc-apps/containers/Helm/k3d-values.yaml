@@ -1,0 +1,103 @@
+# k3d-specific configuration for testing
+# Removes hardware-specific requirements that k3d doesn't support
+
+# Use local images for k3d
+image:
+  pullPolicy: IfNotPresent  # Use local images when available
+
+# Reduce resource requirements for k3d testing
+resources:
+  gnb:
+    limits:
+      cpu: 8              # Increased from 4 for better compilation and runtime performance
+      memory: 8Gi         # Increased from 2Gi for C++ compilation
+      hugepages1Gi: ""    # Explicitly override to empty string
+      # hugepages-1Gi: 4Gi  # Removed - k3d doesn't support hugepages
+    requests:
+      cpu: 4              # Increased from 2 for better compilation and runtime performance
+      memory: 4Gi         # Increased from 1Gi for C++ compilation
+      hugepages1Gi: ""    # Explicitly override to empty string
+      # hugepages-1Gi: 4Gi  # Removed - k3d doesn't support hugepages
+  jbpf_proxy:
+    limits:
+      cpu: 500m
+      memory: 500Mi
+    requests:
+      cpu: 200m           # Reduced from 500m
+      memory: 256Mi       # Reduced from 500Mi
+  jrtc:
+    limits:
+      cpu: 1              # Increased from 500m 
+      memory: 4Gi         # ushasi - Increased from 2Gi to prevent OOM with JBPF memory
+      hugepages2Gi: ""    # Explicitly override to empty string for k3d
+      # hugepages2Gi: 2Gi   # Removed - k3d doesn't support hugepages
+    requests:
+      cpu: 500m           # Increased from 200m
+      memory: 2Gi         # ushasi - Increased from 1Gi to prevent OOM with JBPF memory
+      hugepages2Gi: ""    # Explicitly override to empty string for k3d
+      # hugepages2Gi: 2Gi   # Removed - k3d doesn't support hugepages
+  open5gs:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+
+# Remove SR-IOV requirements for k3d testing
+duConfigs:
+  du1:
+    midhaul:
+      ip: 192.168.110.233
+    cells: null  # Explicitly set to null to override default cell1
+
+# Keep basic networking config but remove SR-IOV resources
+sriov:
+  cniVersion: 0.3.1
+  cucp_ip: 192.168.101.205
+  cucp_prefix: 24
+  cucp_gateway: 192.168.101.1
+  cuup_ip: 192.168.110.205
+  cuup_prefix: 24
+  cuup_gateway: 192.168.110.1
+  # resourceName: "intel.com/intel_810_1"  # Removed - not available in k3d
+  resourceName: ""  # Set to empty string to avoid template issues
+
+# Disable hardware-specific features
+das:
+  enabled: false
+dmimo:
+  enabled: false
+
+# Configure 5gc for k3d
+open5gs:
+  enabled: false          # Disabled - Open5GS removed from srsRAN pod
+  image: "janus-latest-5gc:latest"  # Use the locally built image
+  expose_ngap: false
+
+# Fix missing volume paths for k3d
+jbpf:
+  codelets_vol_mount: "__REPO_ROOT__/jrtc-apps/codelets"
+
+jrtc_controller:
+  apps_vol_mount: "__REPO_ROOT__/jrtc-apps/jrtc_apps"
+
+srsran:
+  source_path: "__REPO_ROOT__/jrtc-apps/containers/Docker/srsRAN_Project"
+
+jrtc:
+  utils_path: "__REPO_ROOT__/jrtc-apps/utils"
+  env_file_path: "__REPO_ROOT__/jrtc-apps/.env"
+  set_vars_path: "__REPO_ROOT__/jrtc-apps/set_vars.sh"
+
+jbpf_extended:
+  protobuf_path: "__REPO_ROOT__/jrtc-apps/jbpf_protobuf" 
+
+# EdgeRIC-RT muApp host: pod edgeric-0 (image: docker build -t edgeric:local edgeric-rt; k3d image import).
+edgeric:
+  enabled: true
+  image: edgeric:local
+  code_vol_mount: "__REPO_ROOT__/edgeric-rt"
+  rt_apps_vol_mount: "__REPO_ROOT__/jrtc-apps/jrtc_apps/edgeric_rt"
+  cpu_request: "1"
+  memory: 4Gi

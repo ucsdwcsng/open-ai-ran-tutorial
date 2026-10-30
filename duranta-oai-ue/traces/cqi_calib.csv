@@ -1,0 +1,18 @@
+# DL SNR (dB) at the middle of the band in which the OAI UE reports each wideband CQI, on this ZMQ AWGN channel
+# (20 MHz n78 TDD cell, static UE, jitter 0). Seeded from the measured points in
+# duranta-ue/docs/zmq-channel.md "Measured CQI vs SNR" (0 dB -> 4, 2 -> 6, 8 -> 9, 12 -> 12, 16 -> 13, >= 22 -> 15),
+# with the CQIs in between interpolated. Refine it with a staircase run: edgeric-rt/tools/calibrate_cqi.py.
+# Keep every SNR >= 0 dB: below that the UE reports CQI 15 (unsigned wrap in its CSI code).
+cqi,snr_db
+4,0.6
+5,1.2
+6,2.2
+7,4.2
+8,6.1
+9,8.1
+10,9.4
+11,10.8
+12,12.6
+13,16.0
+14,19.0
+15,24.0

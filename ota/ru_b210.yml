@@ -1,0 +1,24 @@
+# USRP B210 over USB 3 -- the radio for gnb_ota_tdd_n78_20mhz.yml:
+#   gnb -c gnb_ota_tdd_n78_20mhz.yml -c ru_b210.yml          (scripts/setup_ota.sh --sdr b210)
+# Antennas on RF A: TX/RX transmits, RX2 receives. Plug into a USB 3 port (uhd_usrp_probe reports
+# "Operating over USB 3"); over USB 2 the B210 cannot sustain 23.04 MS/s.
+
+ru_sdr:
+  device_driver: uhd
+  device_args: type=b200,num_recv_frames=64,num_send_frames=64
+  srate: 23.04
+  otw_format: sc12                   # 12-bit samples: less USB load
+  # Analog gains in dB (TX 0-89.75, RX 0-76). 80/40 is upstream's over-the-air setting
+  # (ocudu-jbpf/configs/gnb_rf_b200_tdd_n78_20mhz.yml). Through cables and attenuators, start with
+  # tx_gain near 50 and raise it until the UE reports a good RSRP.
+  tx_gain: 80
+  rx_gain: 40
+  # With the GPSDO module fitted (COTS UEs lock more reliably to a disciplined clock):
+  # clock: gpsdo
+  # sync: gpsdo
+
+# The USRP's free-running clock leaves a frequency offset in the uplink that the PUSCH channel
+# estimator has to absorb (same settings as upstream's B200 example). With a GPSDO the defaults may do better.
+expert_phy:
+  pusch_channel_estimator_td_strategy: average
+  pusch_channel_estimator_cfo_compensation: true

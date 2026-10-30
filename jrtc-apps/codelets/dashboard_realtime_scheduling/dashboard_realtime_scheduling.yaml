@@ -1,0 +1,24 @@
+# Copyright (c) Microsoft Corporation. Licensed under the MIT license.
+#
+# dashboard-realtime-scheduling: what the DL scheduler does, per UE, on the upt bucket grid (134.217728 ms).
+#
+#   rts_stats  on mac_sched_slot_report: each UE's CQI, DL backlog, PRBs and DRB bytes, aggregated in the codelet
+#              over a bucket -> out_rts_stats, one message per bucket.
+#
+# mac_sched_slot_report is a plain hook, so this set loads alongside edgeric_rt's rt_report (or without it).
+
+codeletset_id: dashboard_realtime_scheduling
+
+codelet_descriptor:
+  - codelet_name: rts_stats
+    codelet_path: ${JBPF_CODELETS}/dashboard_realtime_scheduling/rts_stats.o
+    hook_name: mac_sched_slot_report
+    priority: 2
+    out_io_channel:
+      - name: out_rts_stats
+        forward_destination: DestinationNone
+        serde:
+          file_path: ${JBPF_CODELETS}/dashboard_realtime_scheduling/rts_stats:rts_stats_serializer.so
+          protobuf:
+            package_path: ${JBPF_CODELETS}/dashboard_realtime_scheduling/rts_stats.pb
+            msg_name: rts_stats

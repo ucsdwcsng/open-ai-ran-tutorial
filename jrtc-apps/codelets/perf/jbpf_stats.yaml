@@ -1,0 +1,18 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+codeletset_id: jbpf_stats
+
+codelet_descriptor:
+  - codelet_name: jbpf_stats_report
+    codelet_path: ${JBPF_CODELETS}/perf/jbpf_stats_report.o
+    hook_name: report_stats
+    priority: 2
+    out_io_channel:
+      - name: output_map
+        forward_destination: DestinationNone
+        serde:
+          file_path: ${JBPF_CODELETS}/perf/jbpf_stats_report:jbpf_out_perf_list_serializer.so
+          protobuf:
+            package_path: ${JBPF_CODELETS}/perf/jbpf_stats_report.pb
+            msg_name: jbpf_out_perf_list

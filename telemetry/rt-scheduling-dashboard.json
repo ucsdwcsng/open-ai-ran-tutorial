@@ -1,0 +1,2055 @@
+{
+  "uid": "rt-scheduling",
+  "title": "EdgeRIC real-time scheduling",
+  "description": "dashboard-realtime-scheduling xApp (jrtc-apps/jrtc_apps/dashboard_realtime_scheduling) and tcp_probe on the UPF.",
+  "tags": [
+    "ran",
+    "jbpf",
+    "edgeric"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1s",
+  "time": {
+    "from": "now-5m",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "500ms",
+      "1s",
+      "2s",
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m"
+    ]
+  },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "smooth",
+        "label": "Average over",
+        "type": "custom",
+        "description": "Trailing moving average for the per-UE panels. 134 ms shows each bucket (TCP then shows ACK bursts); 1 s matches iperf's per-second reports. The CQI walks wander for seconds, so the throughput only settles over 10-30 s, at the cost of reacting that much later to a switch.",
+        "query": "134 ms : 150ms, 500 ms : 500ms, 1 s : 1s, 5 s : 5s, 10 s : 10s, 30 s : 30s",
+        "current": {
+          "selected": true,
+          "text": "5 s",
+          "value": "5s"
+        },
+        "options": [
+          {
+            "selected": false,
+            "text": "134 ms",
+            "value": "150ms"
+          },
+          {
+            "selected": false,
+            "text": "500 ms",
+            "value": "500ms"
+          },
+          {
+            "selected": false,
+            "text": "1 s",
+            "value": "1s"
+          },
+          {
+            "selected": true,
+            "text": "5 s",
+            "value": "5s"
+          },
+          {
+            "selected": false,
+            "text": "10 s",
+            "value": "10s"
+          },
+          {
+            "selected": false,
+            "text": "30 s",
+            "value": "30s"
+          }
+        ],
+        "hide": 0,
+        "includeAll": false,
+        "multi": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "UEs and scheduler",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": 2,
+      "type": "table",
+      "title": "UE identity: core (IMSI, IP, NGAP) to gNB (DU UE index, C-RNTI)",
+      "description": "One row per UE in the cell. DU UE index and C-RNTI come with every gNB slot report; ue_map.txt (scripts/ue_rnti_map.sh, the names the EdgeRIC muApps use) names each C-RNTI ue<n>, and UE n has IMSI ...n on this testbed. IMSI, IP and the NGAP UE IDs are the core's view (scripts/core_ue_info.sh). Published as rts_ue_ids by the dashboard-realtime-scheduling xApp. A UE without a name in ue_map.txt shows as du<index>.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 15,
+        "x": 0,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (n, imsi, ip, amf_ue_ngap_id, ran_ue_ngap_id, du, rnti) (last_over_time(rts_ue_ids[10s]))",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "legendFormat": ""
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Value": true
+            },
+            "indexByName": {
+              "n": 0,
+              "imsi": 1,
+              "ip": 2,
+              "amf_ue_ngap_id": 3,
+              "ran_ue_ngap_id": 4,
+              "du": 5,
+              "rnti": 6
+            },
+            "renameByName": {
+              "n": "UE",
+              "imsi": "IMSI",
+              "ip": "IP",
+              "amf_ue_ngap_id": "AMF UE NGAP ID",
+              "ran_ue_ngap_id": "RAN UE NGAP ID",
+              "du": "DU UE index",
+              "rnti": "C-RNTI"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "UE"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "1": {
+                        "color": "#3987e5",
+                        "index": 0
+                      },
+                      "2": {
+                        "color": "#d95926",
+                        "index": 1
+                      },
+                      "3": {
+                        "color": "#199e70",
+                        "index": 2
+                      },
+                      "4": {
+                        "color": "#c98500",
+                        "index": 3
+                      },
+                      "5": {
+                        "color": "#d55181",
+                        "index": 4
+                      },
+                      "6": {
+                        "color": "#008300",
+                        "index": 5
+                      },
+                      "7": {
+                        "color": "#9085e9",
+                        "index": 6
+                      },
+                      "8": {
+                        "color": "#e66767",
+                        "index": 7
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 60
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "UE",
+            "desc": false
+          }
+        ],
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Scheduler",
+      "description": "The muApp's scheduler, from its own edgeric_rt metrics (scripts/edgeric_muapp.sh start sched ...). Without a muApp the gNB runs its own scheduler.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 5,
+        "x": 15,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"maxweight\"}[1s])) * 0 + 1) or (max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"maxcqi\"}[1s])) * 0 + 2) or (max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"bestcqi\"}[1s])) * 0 + 3) or (max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"pf\"}[1s])) * 0 + 4) or (max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"rr\"}[1s])) * 0 + 5) or (max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"fixed\"}[1s])) * 0 + 6) or (max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"rl\"}[1s])) * 0 + 7) or (max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"stock\"}[1s])) * 0 + 8) or vector(0)",
+          "legendFormat": "",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "gNB scheduler (no muApp)",
+                  "color": "#6e6e6e",
+                  "index": 0
+                },
+                "1": {
+                  "text": "max-weight",
+                  "color": "#a352cc",
+                  "index": 1
+                },
+                "2": {
+                  "text": "max-CQI",
+                  "color": "#e0b400",
+                  "index": 2
+                },
+                "3": {
+                  "text": "best-CQI",
+                  "color": "#ff9830",
+                  "index": 3
+                },
+                "4": {
+                  "text": "PF",
+                  "color": "#5794f2",
+                  "index": 4
+                },
+                "5": {
+                  "text": "round robin",
+                  "color": "#73bf69",
+                  "index": 5
+                },
+                "6": {
+                  "text": "fixed shares",
+                  "color": "#b877d9",
+                  "index": 6
+                },
+                "7": {
+                  "text": "PPO",
+                  "color": "#f2495c",
+                  "index": 7
+                },
+                "8": {
+                  "text": "stock (muApp)",
+                  "color": "#8f8f8f",
+                  "index": 8
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "TTIs run by the muApp",
+      "description": "Share of DL slots that applied a muApp action meant for exactly that TTI (RT-E2 HIT). The rest ran the gNB's own scheduler. From the rts_stats codelet.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 20,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg_over_time(rts_cell_hit_pct[5s])",
+          "legendFormat": "",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              },
+              {
+                "color": "orange",
+                "value": 90
+              },
+              {
+                "color": "green",
+                "value": 98
+              }
+            ]
+          },
+          "unit": "percent",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Cell DL, gNB (5 s)",
+      "description": "DRB bytes the gNB scheduled, all UEs, averaged over 5 s.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 5,
+        "x": 15,
+        "y": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(avg_over_time(rts_cell_dl_mbps[5s]))",
+          "legendFormat": "",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "Mbits",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Cell DL received (5 s)",
+      "description": "What the UEs received, all UEs, averaged over 5 s: TCP bytes they ACKed (tcpdump on the UPF) plus UDP their receivers logged.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 20,
+        "y": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum(avg_over_time(tcp_throughput_mbps[5s])) + sum(avg_over_time(ue_rx_mbps[5s]))) or sum(avg_over_time(tcp_throughput_mbps[5s])) or sum(avg_over_time(ue_rx_mbps[5s]))",
+          "legendFormat": "",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "Mbits",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 7,
+      "type": "row",
+      "title": "Per UE, averaged over $smooth (134 ms buckets of the gNB slot reports and of tcpdump on the UPF, on the same grid)",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 7
+      }
+    },
+    {
+      "id": 12,
+      "type": "state-timeline",
+      "title": "Scheduler",
+      "description": "Which scheduler ran when: the muApp's (edgeric_rt metrics), else the gNB's own.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"maxweight\"}[1s])) * 0 + 1) or (max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"maxcqi\"}[1s])) * 0 + 2) or (max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"bestcqi\"}[1s])) * 0 + 3) or (max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"pf\"}[1s])) * 0 + 4) or (max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"rr\"}[1s])) * 0 + 5) or (max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"fixed\"}[1s])) * 0 + 6) or (max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"rl\"}[1s])) * 0 + 7) or (max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"stock\"}[1s])) * 0 + 8) or vector(0)",
+          "legendFormat": "scheduler",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#6e6e6e"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "gNB scheduler (no muApp)",
+                  "color": "#6e6e6e",
+                  "index": 0
+                },
+                "1": {
+                  "text": "max-weight",
+                  "color": "#a352cc",
+                  "index": 1
+                },
+                "2": {
+                  "text": "max-CQI",
+                  "color": "#e0b400",
+                  "index": 2
+                },
+                "3": {
+                  "text": "best-CQI",
+                  "color": "#ff9830",
+                  "index": 3
+                },
+                "4": {
+                  "text": "PF",
+                  "color": "#5794f2",
+                  "index": 4
+                },
+                "5": {
+                  "text": "round robin",
+                  "color": "#73bf69",
+                  "index": 5
+                },
+                "6": {
+                  "text": "fixed shares",
+                  "color": "#b877d9",
+                  "index": 6
+                },
+                "7": {
+                  "text": "PPO",
+                  "color": "#f2495c",
+                  "index": 7
+                },
+                "8": {
+                  "text": "stock (muApp)",
+                  "color": "#8f8f8f",
+                  "index": 8
+                }
+              }
+            }
+          ],
+          "custom": {
+            "fillOpacity": 80,
+            "lineWidth": 0
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "mergeValues": true,
+        "showValue": "auto",
+        "alignValue": "center",
+        "rowHeight": 0.9,
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "DL CQI",
+      "description": "Wideband CQI the UE reported, averaged over the bucket's slots (the channel the scheduler sees).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 0,
+        "y": 11
+      },
+      "maxDataPoints": 600,
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(avg_over_time(rts_ue_cqi[$smooth]) * on(du) group_left(n) max by (du, n) (last_over_time(rts_ue_ids[10s]))) or on(du) label_replace(avg_over_time(rts_ue_cqi[$smooth]), \"n\", \"du$1\", \"du\", \"(.*)\")",
+          "legendFormat": "UE {{n}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "min": 0,
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": 1000
+          },
+          "max": 15,
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 1( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 2( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 3( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 4( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c98500"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 5( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 6( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#008300"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 7( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 8( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e66767"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "text"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    6
+                  ]
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "sortBy": "Name",
+          "sortDesc": false
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "DL backlog",
+      "description": "Bytes waiting for the UE in the gNB (RLC queues, all logical channels), averaged over the bucket's slots.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 12,
+        "y": 11
+      },
+      "maxDataPoints": 600,
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(avg_over_time(rts_ue_backlog_bytes[$smooth]) * on(du) group_left(n) max by (du, n) (last_over_time(rts_ue_ids[10s]))) or on(du) label_replace(avg_over_time(rts_ue_backlog_bytes[$smooth]), \"n\", \"du$1\", \"du\", \"(.*)\")",
+          "legendFormat": "UE {{n}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "decbytes",
+          "min": 0,
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": 1000
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 1( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 2( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 3( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 4( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c98500"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 5( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 6( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#008300"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 7( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 8( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e66767"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "text"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    6
+                  ]
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "sortBy": "Name",
+          "sortDesc": false
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "DL throughput received: TCP (tcpdump on the UPF), UDP (UE receivers)",
+      "description": "What each UE received. TCP: bytes newly ACKed on the server-to-UE flows, from tcpdump in the UPF's tcpdumper container (telemetry/tcp_probe.py), per 134 ms bucket. UDP: the bytes each UE's receiver (udp_sink.pl or iperf3 -s, scripts/traffic_nue.sh) logs every second (telemetry/ue_rx_probe.py); the UPF cannot see UDP delivery, as UDP has no ACKs. Thick lines: the mean of the total under the scheduler that runs, since it started (within the time range), in the scheduler's color.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 17,
+        "w": 12,
+        "x": 0,
+        "y": 22
+      },
+      "maxDataPoints": 600,
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(avg_over_time(tcp_throughput_mbps[$smooth]) * on(ip) group_left(n) max by (ip, n) (last_over_time(rts_ue_ids[10s]))) or on(ip) label_replace(avg_over_time(tcp_throughput_mbps[$smooth]), \"n\", \"$1\", \"ue\", \"(.*)\")",
+          "legendFormat": "UE {{n}}",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "B",
+          "expr": "(avg_over_time(ue_rx_mbps[$smooth]) or last_over_time(ue_rx_mbps[1500ms]))",
+          "legendFormat": "UE {{n}} (UDP)",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "C",
+          "expr": "(sum(avg_over_time(tcp_throughput_mbps[$smooth])) + sum((avg_over_time(ue_rx_mbps[$smooth]) or last_over_time(ue_rx_mbps[1500ms])))) or sum(avg_over_time(tcp_throughput_mbps[$smooth])) or sum((avg_over_time(ue_rx_mbps[$smooth]) or last_over_time(ue_rx_mbps[1500ms])))",
+          "legendFormat": "Total",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "D",
+          "expr": "avg_over_time((((sum(avg_over_time(tcp_throughput_mbps[1s])) + sum(last_over_time(ue_rx_mbps[1500ms]))) or sum(avg_over_time(tcp_throughput_mbps[1s])) or sum(last_over_time(ue_rx_mbps[1500ms]))) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"maxweight\"}[1s])))[$__range:1s]) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"maxweight\"}[1s])) and on() (count_over_time(edgeric_rt_dl_hit_pct{scheduler=\"maxweight\"}[5s]) > 40)",
+          "legendFormat": "Mean, max-weight",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "E",
+          "expr": "avg_over_time((((sum(avg_over_time(tcp_throughput_mbps[1s])) + sum(last_over_time(ue_rx_mbps[1500ms]))) or sum(avg_over_time(tcp_throughput_mbps[1s])) or sum(last_over_time(ue_rx_mbps[1500ms]))) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"maxcqi\"}[1s])))[$__range:1s]) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"maxcqi\"}[1s])) and on() (count_over_time(edgeric_rt_dl_hit_pct{scheduler=\"maxcqi\"}[5s]) > 40)",
+          "legendFormat": "Mean, max-CQI",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "F",
+          "expr": "avg_over_time((((sum(avg_over_time(tcp_throughput_mbps[1s])) + sum(last_over_time(ue_rx_mbps[1500ms]))) or sum(avg_over_time(tcp_throughput_mbps[1s])) or sum(last_over_time(ue_rx_mbps[1500ms]))) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"bestcqi\"}[1s])))[$__range:1s]) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"bestcqi\"}[1s])) and on() (count_over_time(edgeric_rt_dl_hit_pct{scheduler=\"bestcqi\"}[5s]) > 40)",
+          "legendFormat": "Mean, best-CQI",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "G",
+          "expr": "avg_over_time((((sum(avg_over_time(tcp_throughput_mbps[1s])) + sum(last_over_time(ue_rx_mbps[1500ms]))) or sum(avg_over_time(tcp_throughput_mbps[1s])) or sum(last_over_time(ue_rx_mbps[1500ms]))) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"pf\"}[1s])))[$__range:1s]) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"pf\"}[1s])) and on() (count_over_time(edgeric_rt_dl_hit_pct{scheduler=\"pf\"}[5s]) > 40)",
+          "legendFormat": "Mean, PF",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "H",
+          "expr": "avg_over_time((((sum(avg_over_time(tcp_throughput_mbps[1s])) + sum(last_over_time(ue_rx_mbps[1500ms]))) or sum(avg_over_time(tcp_throughput_mbps[1s])) or sum(last_over_time(ue_rx_mbps[1500ms]))) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"rr\"}[1s])))[$__range:1s]) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"rr\"}[1s])) and on() (count_over_time(edgeric_rt_dl_hit_pct{scheduler=\"rr\"}[5s]) > 40)",
+          "legendFormat": "Mean, round robin",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "I",
+          "expr": "avg_over_time((((sum(avg_over_time(tcp_throughput_mbps[1s])) + sum(last_over_time(ue_rx_mbps[1500ms]))) or sum(avg_over_time(tcp_throughput_mbps[1s])) or sum(last_over_time(ue_rx_mbps[1500ms]))) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"fixed\"}[1s])))[$__range:1s]) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"fixed\"}[1s])) and on() (count_over_time(edgeric_rt_dl_hit_pct{scheduler=\"fixed\"}[5s]) > 40)",
+          "legendFormat": "Mean, fixed shares",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "J",
+          "expr": "avg_over_time((((sum(avg_over_time(tcp_throughput_mbps[1s])) + sum(last_over_time(ue_rx_mbps[1500ms]))) or sum(avg_over_time(tcp_throughput_mbps[1s])) or sum(last_over_time(ue_rx_mbps[1500ms]))) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"rl\"}[1s])))[$__range:1s]) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"rl\"}[1s])) and on() (count_over_time(edgeric_rt_dl_hit_pct{scheduler=\"rl\"}[5s]) > 40)",
+          "legendFormat": "Mean, PPO",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "K",
+          "expr": "avg_over_time((((sum(avg_over_time(tcp_throughput_mbps[1s])) + sum(last_over_time(ue_rx_mbps[1500ms]))) or sum(avg_over_time(tcp_throughput_mbps[1s])) or sum(last_over_time(ue_rx_mbps[1500ms]))) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"stock\"}[1s])))[$__range:1s]) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"stock\"}[1s])) and on() (count_over_time(edgeric_rt_dl_hit_pct{scheduler=\"stock\"}[5s]) > 40)",
+          "legendFormat": "Mean, stock (muApp)",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "L",
+          "expr": "avg_over_time((((sum(avg_over_time(tcp_throughput_mbps[1s])) + sum(last_over_time(ue_rx_mbps[1500ms]))) or sum(avg_over_time(tcp_throughput_mbps[1s])) or sum(last_over_time(ue_rx_mbps[1500ms]))) unless on() max(last_over_time(edgeric_rt_dl_hit_pct[1s])))[$__range:1s]) unless on() max(last_over_time(edgeric_rt_dl_hit_pct[5s]))",
+          "legendFormat": "Mean, gNB scheduler (no muApp)",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Mbits",
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": 1000
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 1( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 2( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 3( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 4( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c98500"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 5( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 6( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#008300"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 7( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 8( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e66767"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "text"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    6
+                  ]
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mean, max-weight"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#a352cc"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 4
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mean, max-CQI"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e0b400"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 4
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mean, best-CQI"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#ff9830"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 4
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mean, PF"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794f2"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 4
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mean, round robin"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#73bf69"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 4
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mean, fixed shares"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#b877d9"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 4
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mean, PPO"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#f2495c"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 4
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mean, stock (muApp)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8f8f8f"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 4
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mean, gNB scheduler (no muApp)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8e8e8e"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 4
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "lastNotNull"
+          ],
+          "sortBy": "Name",
+          "sortDesc": false
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "DL throughput, gNB",
+      "description": "DRB bytes in each UE's PDSCH grants per bucket (no MAC headers or padding), from the gNB's slot reports. Thick lines: the mean of the total under the scheduler that runs, since it started (within the time range), in the scheduler's color.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "h": 17,
+        "w": 12,
+        "x": 12,
+        "y": 22
+      },
+      "maxDataPoints": 600,
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(avg_over_time(rts_ue_dl_mbps[$smooth]) * on(du) group_left(n) max by (du, n) (last_over_time(rts_ue_ids[10s]))) or on(du) label_replace(avg_over_time(rts_ue_dl_mbps[$smooth]), \"n\", \"du$1\", \"du\", \"(.*)\")",
+          "legendFormat": "UE {{n}}",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "B",
+          "expr": "sum(avg_over_time(rts_cell_dl_mbps[$smooth]))",
+          "legendFormat": "Total",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "C",
+          "expr": "avg_over_time(((sum(avg_over_time(rts_cell_dl_mbps[1s]))) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"maxweight\"}[1s])))[$__range:1s]) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"maxweight\"}[1s])) and on() (count_over_time(edgeric_rt_dl_hit_pct{scheduler=\"maxweight\"}[5s]) > 40)",
+          "legendFormat": "Mean, max-weight",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "D",
+          "expr": "avg_over_time(((sum(avg_over_time(rts_cell_dl_mbps[1s]))) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"maxcqi\"}[1s])))[$__range:1s]) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"maxcqi\"}[1s])) and on() (count_over_time(edgeric_rt_dl_hit_pct{scheduler=\"maxcqi\"}[5s]) > 40)",
+          "legendFormat": "Mean, max-CQI",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "E",
+          "expr": "avg_over_time(((sum(avg_over_time(rts_cell_dl_mbps[1s]))) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"bestcqi\"}[1s])))[$__range:1s]) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"bestcqi\"}[1s])) and on() (count_over_time(edgeric_rt_dl_hit_pct{scheduler=\"bestcqi\"}[5s]) > 40)",
+          "legendFormat": "Mean, best-CQI",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "F",
+          "expr": "avg_over_time(((sum(avg_over_time(rts_cell_dl_mbps[1s]))) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"pf\"}[1s])))[$__range:1s]) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"pf\"}[1s])) and on() (count_over_time(edgeric_rt_dl_hit_pct{scheduler=\"pf\"}[5s]) > 40)",
+          "legendFormat": "Mean, PF",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "G",
+          "expr": "avg_over_time(((sum(avg_over_time(rts_cell_dl_mbps[1s]))) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"rr\"}[1s])))[$__range:1s]) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"rr\"}[1s])) and on() (count_over_time(edgeric_rt_dl_hit_pct{scheduler=\"rr\"}[5s]) > 40)",
+          "legendFormat": "Mean, round robin",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "H",
+          "expr": "avg_over_time(((sum(avg_over_time(rts_cell_dl_mbps[1s]))) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"fixed\"}[1s])))[$__range:1s]) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"fixed\"}[1s])) and on() (count_over_time(edgeric_rt_dl_hit_pct{scheduler=\"fixed\"}[5s]) > 40)",
+          "legendFormat": "Mean, fixed shares",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "I",
+          "expr": "avg_over_time(((sum(avg_over_time(rts_cell_dl_mbps[1s]))) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"rl\"}[1s])))[$__range:1s]) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"rl\"}[1s])) and on() (count_over_time(edgeric_rt_dl_hit_pct{scheduler=\"rl\"}[5s]) > 40)",
+          "legendFormat": "Mean, PPO",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "J",
+          "expr": "avg_over_time(((sum(avg_over_time(rts_cell_dl_mbps[1s]))) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"stock\"}[1s])))[$__range:1s]) and on() max(last_over_time(edgeric_rt_dl_hit_pct{scheduler=\"stock\"}[1s])) and on() (count_over_time(edgeric_rt_dl_hit_pct{scheduler=\"stock\"}[5s]) > 40)",
+          "legendFormat": "Mean, stock (muApp)",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "K",
+          "expr": "avg_over_time(((sum(avg_over_time(rts_cell_dl_mbps[1s]))) unless on() max(last_over_time(edgeric_rt_dl_hit_pct[1s])))[$__range:1s]) unless on() max(last_over_time(edgeric_rt_dl_hit_pct[5s]))",
+          "legendFormat": "Mean, gNB scheduler (no muApp)",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Mbits",
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": 1000
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 1( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 2( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 3( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 4( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c98500"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 5( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 6( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#008300"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 7( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^UE 8( .*)?$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e66767"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "text"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    6
+                  ]
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mean, max-weight"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#a352cc"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 4
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mean, max-CQI"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e0b400"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 4
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mean, best-CQI"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#ff9830"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 4
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mean, PF"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794f2"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 4
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mean, round robin"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#73bf69"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 4
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mean, fixed shares"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#b877d9"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 4
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mean, PPO"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#f2495c"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 4
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mean, stock (muApp)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8f8f8f"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 4
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mean, gNB scheduler (no muApp)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8e8e8e"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 4
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "lastNotNull"
+          ],
+          "sortBy": "Name",
+          "sortDesc": false
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    }
+  ]
+}

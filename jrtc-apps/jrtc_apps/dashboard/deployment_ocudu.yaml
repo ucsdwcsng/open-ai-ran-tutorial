@@ -1,0 +1,65 @@
+# Dashboard on OCUDU jbpf gNB — fixed hosts/ports (jrtc-service:3001, jrtc-decoder:20789,
+# srs-gnb-du1-proxy:30450) and trimmed to the correctly-ported L2/L3 telemetry codeletsets
+# (ue_contexts, mac, rlc, pdcp, rrc, ngap). FAPI/perf/xran dropped for now (OCUDU FAPI structs
+# differ from the SDK-built codelets; perf/xran optional). The app still imports all modules and
+# subscribes to all streams — the dropped ones simply carry no data.
+name: dashboard
+
+decoder:
+  - type: decodergrpc
+    host: jrtc-decoder.ran.svc.cluster.local
+    port: 20789
+
+app:
+  - name: dashboard
+    path: ${JRTC_APPS}/dashboard/dashboard.py
+    type: python
+    host: jrtc-service.ran.svc.cluster.local
+    port: 3001
+    modules:
+      - ${JRTC_APPS}/dashboard/dashboard_params.py
+      - ${JRTC_APPS}/libs/logger.py
+      - ${JRTC_APPS}/libs/la_logger.py
+      - ${JRTC_APPS}/libs/ue_contexts_map.py
+      - ${JBPF_CODELETS}/ue_contexts/ue_contexts.py
+      - ${JBPF_CODELETS}/mac/mac_sched_bsr_stats.py
+      - ${JBPF_CODELETS}/mac/mac_sched_crc_stats.py
+      - ${JBPF_CODELETS}/mac/mac_sched_phr_stats.py
+      - ${JBPF_CODELETS}/mac/mac_sched_uci_stats.py
+      - ${JBPF_CODELETS}/mac/mac_sched_harq_stats.py
+      - ${JBPF_CODELETS}/rlc/rlc_dl_stats.py
+      - ${JBPF_CODELETS}/rlc/rlc_ul_stats.py
+      - ${JBPF_CODELETS}/pdcp/pdcp_dl_stats.py
+      - ${JBPF_CODELETS}/pdcp/pdcp_ul_stats.py
+      - ${JBPF_CODELETS}/rrc/rrc_ue_add.py
+      - ${JBPF_CODELETS}/rrc/rrc_ue_procedure.py
+      - ${JBPF_CODELETS}/rrc/rrc_ue_remove.py
+      - ${JBPF_CODELETS}/rrc/rrc_ue_update_context.py
+      - ${JBPF_CODELETS}/rrc/rrc_ue_update_id.py
+      - ${JBPF_CODELETS}/ngap/ngap.py
+      - ${JBPF_CODELETS}/fapi_dl_conf/fapi_gnb_dl_config_stats.py
+      - ${JBPF_CODELETS}/fapi_ul_conf/fapi_gnb_ul_config_stats.py
+      - ${JBPF_CODELETS}/fapi_ul_crc/fapi_gnb_crc_stats.py
+      - ${JBPF_CODELETS}/fapi_rach/fapi_gnb_rach_stats.py
+      - ${JBPF_CODELETS}/perf/jbpf_stats_report.py
+      - ${JBPF_CODELETS}/xran_packets/xran_packet_info.py
+
+jbpf:
+  device:
+    - id: 1
+      host: srs-gnb-du1-proxy.ran.svc.cluster.local
+      port: 30450
+
+  codelet_set:
+    - device: 1
+      config: ${JBPF_CODELETS}/ue_contexts/ue_contexts.yaml
+    - device: 1
+      config: ${JBPF_CODELETS}/mac/mac_stats.yaml
+    - device: 1
+      config: ${JBPF_CODELETS}/rlc/rlc_stats.yaml
+    - device: 1
+      config: ${JBPF_CODELETS}/pdcp/pdcp_stats.yaml
+    - device: 1
+      config: ${JBPF_CODELETS}/rrc/rrc.yaml
+    - device: 1
+      config: ${JBPF_CODELETS}/ngap/ngap.yaml

@@ -1,0 +1,51 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
+syntax = "proto2";
+
+message t_dl_stats_item {
+   required uint32 count = 1;
+   required uint64 total = 2;
+   required uint32 min = 3;
+   required uint32 max = 4;
+}
+
+message t_dl_traffic_stats_item {
+   required uint32 count = 1;
+   required uint64 total = 2;
+}
+
+message t_dl_stats {
+   required uint32 cu_ue_index = 1;
+   required uint32 is_srb = 2;
+   required uint32 rb_id = 3;
+   required uint32 rlc_mode = 4;
+
+   // SDUs received from higher layers
+   required t_dl_traffic_stats_item sdu_new_bytes = 5;
+   // SDUs discarded
+   required uint32 sdu_discarded = 6;
+
+   // DATA PDUs transmitted / retransmitted
+   required t_dl_traffic_stats_item data_pdu_tx_bytes = 7;
+   required t_dl_traffic_stats_item data_pdu_retx_bytes = 8;
+
+   // CONTROL PDUs transmitted / retransmitted
+   required t_dl_traffic_stats_item control_pdu_tx_bytes = 9;
+
+   // window info
+   optional t_dl_stats_item pdu_window_pkts = 10;
+   optional t_dl_stats_item pdu_window_bytes = 11;
+
+   // pdcp_tx_latency = sdu-arrival ... sdu-transmission
+   optional t_dl_stats_item sdu_tx_latency = 12;
+}
+
+message dl_stats {
+   required uint64 timestamp = 1;
+   repeated t_dl_stats stats = 2;
+}
+
+
+
+

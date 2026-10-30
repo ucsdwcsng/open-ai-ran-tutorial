@@ -1,0 +1,83 @@
+{{- if $.Values.edgeric.enabled }}
+# EdgeRIC-RT muApp host (pod edgeric-0, container edgeric): every EdgeRIC muApp runs here (scheduling baselines,
+# the PPO scheduler and its training). The muApps talk to the rt_bridge xApp in jrtc-0 over Unix datagram
+# sockets in a host directory both pods mount (run_dir). Code and results are bind-mounted from the repo, so a
+# muApp change needs no image rebuild. Start muApps with scripts/edgeric_muapp.sh.
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: edgeric
+  labels:
+    app: edgeric
+    {{- include "ran-5g.labels" $ | nindent 4 }}
+spec:
+  serviceName: edgeric
+  selector:
+    matchLabels:
+      app: edgeric
+      {{- include "ran-5g.selectorLabels" $ | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app: edgeric
+        {{- include "ran-5g.selectorLabels" $ | nindent 8 }}
+    spec:
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+      terminationGracePeriodSeconds: 0
+      volumes:
+        - name: muapps
+          hostPath:
+            path: {{ $.Values.edgeric.code_vol_mount }}
+            type: Directory
+        - name: rt-apps
+          hostPath:
+            path: {{ $.Values.edgeric.rt_apps_vol_mount }}
+            type: DirectoryOrCreate
+        - name: codelets
+          hostPath:
+            path: {{ $.Values.jbpf.codelets_vol_mount }}
+      containers:
+      - name: edgeric
+        image: {{ $.Values.edgeric.image }}
+        imagePullPolicy: IfNotPresent
+        command: ["sleep", "infinity"]
+        workingDir: /edgeric
+        securityContext:
+          privileged: true
+          capabilities:
+            add:
+            - SYS_NICE
+        env:
+          # muApp code and results (repo edgeric-rt/)
+          - name: EDGERIC_HOME
+            value: /edgeric
+          # rt_bridge's directory: rt_wire.py and the run/ sockets, at the same path as in jrtc-0
+          - name: EDGERIC_RT_APP_DIR
+            value: /apps/edgeric_rt
+          - name: VM_URL
+            value: "http://victoria-metrics.{{ .Release.Namespace }}.svc.cluster.local:8428/write"
+          - name: OMP_NUM_THREADS
+            value: "1"
+          - name: PYTHONUNBUFFERED
+            value: "1"
+          # the code is bind-mounted from the repo: keep root-owned __pycache__ out of it
+          - name: PYTHONDONTWRITEBYTECODE
+            value: "1"
+        volumeMounts:
+        - name: muapps
+          mountPath: /edgeric
+        - name: rt-apps
+          mountPath: /apps/edgeric_rt
+        - name: codelets
+          mountPath: /codelets
+          readOnly: true
+        resources:
+          requests:
+            cpu: {{ $.Values.edgeric.cpu_request | quote }}
+            memory: {{ $.Values.edgeric.memory | quote }}
+          limits:
+            memory: {{ $.Values.edgeric.memory | quote }}
+{{- end }}

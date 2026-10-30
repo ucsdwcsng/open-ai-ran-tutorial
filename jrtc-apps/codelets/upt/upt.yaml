@@ -1,0 +1,85 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+#
+# User-plane telemetry: DL arrival rate, RLC queuing latency, RLC buffer occupancy.
+
+codeletset_id: upt
+
+codelet_descriptor:
+
+  # ---- 1. DL user-plane arrival (GTP-U proxy at PDCP ingress) ----
+  - codelet_name: gtp_arrival
+    codelet_path: ${JBPF_CODELETS}/upt/gtp_arrival.o
+    hook_name: pdcp_dl_new_sdu
+    priority: 1
+    out_io_channel:
+      - name: out_gtp_arrival
+        forward_destination: DestinationNone
+        serde:
+          file_path: ${JBPF_CODELETS}/upt/gtp_arrival_stats:gtp_arrival_stats_serializer.so
+          protobuf:
+            package_path: ${JBPF_CODELETS}/upt/gtp_arrival_stats.pb
+            msg_name: gtp_arrival_stats
+
+  # ---- 2. RLC queuing latency ----
+  - codelet_name: rlc_queueing
+    codelet_path: ${JBPF_CODELETS}/upt/rlc_queueing.o
+    hook_name: rlc_dl_sdu_send_started
+    priority: 1
+    out_io_channel:
+      - name: out_rlc_queue
+        forward_destination: DestinationNone
+        serde:
+          file_path: ${JBPF_CODELETS}/upt/rlc_queue_stats:rlc_queue_stats_serializer.so
+          protobuf:
+            package_path: ${JBPF_CODELETS}/upt/rlc_queue_stats.pb
+            msg_name: rlc_queue_stats
+
+  # ---- 3. RLC buffer occupancy: enqueue side (owns the output channel) ----
+  - codelet_name: rlc_buffer_enq
+    codelet_path: ${JBPF_CODELETS}/upt/rlc_buffer_enq.o
+    hook_name: rlc_dl_new_sdu
+    priority: 1
+    out_io_channel:
+      - name: out_rlc_buffer
+        forward_destination: DestinationNone
+        serde:
+          file_path: ${JBPF_CODELETS}/upt/rlc_buffer_stats:rlc_buffer_stats_serializer.so
+          protobuf:
+            package_path: ${JBPF_CODELETS}/upt/rlc_buffer_stats.pb
+            msg_name: rlc_buffer_stats
+
+  # ---- 3b. RLC buffer occupancy: dequeue side (shares state with enq) ----
+  - codelet_name: rlc_buffer_deq
+    codelet_path: ${JBPF_CODELETS}/upt/rlc_buffer_deq.o
+    hook_name: rlc_dl_sdu_send_completed
+    priority: 2
+    linked_maps:
+      - map_name: rlcb_stats_map
+        linked_codelet_name: rlc_buffer_enq
+        linked_map_name: rlcb_stats_map
+      - map_name: rlcb_bucket_map
+        linked_codelet_name: rlc_buffer_enq
+        linked_map_name: rlcb_bucket_map
+      - map_name: rlcb_hash
+        linked_codelet_name: rlc_buffer_enq
+        linked_map_name: rlcb_hash
+
+  # ---- 4. per-packet RLC records (lossless, batched) - sensor for control loop ----
+  - codelet_name: rlc_pkt_record
+    codelet_path: ${JBPF_CODELETS}/upt/rlc_pkt_record.o
+    hook_name: rlc_dl_sdu_send_started
+    priority: 2
+    out_io_channel:
+      - name: out_rlc_pkts
+        forward_destination: DestinationNone
+        serde:
+          file_path: ${JBPF_CODELETS}/upt/rlc_pkt_records:rlc_pkt_records_serializer.so
+          protobuf:
+            package_path: ${JBPF_CODELETS}/upt/rlc_pkt_records.pb
+            msg_name: rlc_pkt_records
+
+  # ---- 5. CONTROL: dynamic RLC buffer management ----
+  # Moved out of this codeletset: only ONE codelet may attach to the rlc_dl_ctrl hook,
+  # so buffer-size control lives in codelets/bufctl/bufctl.yaml (xApp: jrtc_apps/bufctl).
+

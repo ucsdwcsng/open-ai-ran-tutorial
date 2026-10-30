@@ -1,0 +1,12 @@
+# L4Span codeletset deployment (no xApp: codelets act in-line, no telemetry out).
+name: l4span
+
+jbpf:
+  device:
+    - id: 1
+      host: srs-gnb-du1-proxy.ran.svc.cluster.local
+      port: 30450
+
+  codelet_set:
+    - device: 1
+      config: ${JBPF_CODELETS}/l4span/l4span.yaml

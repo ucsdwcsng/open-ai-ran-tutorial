@@ -1,0 +1,51 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
+syntax = "proto2";
+
+message uci_stat_item_t {
+   required uint32 count = 1;
+   required uint32 total = 2;
+   required uint32 min = 3;
+   required uint32 max = 4;
+}
+
+message uci_uint64_stats_item {
+   required uint32 count = 1;
+   required uint64 total = 2;
+   required uint64 min = 3;
+   required uint64 max = 4;
+}
+
+message uci_harq_stats_item {
+   required uint32 ack_count = 1;
+   required uint32 nack_count = 2;
+   required uint32 dtx_count = 3;
+}
+
+message csi_stats_item {
+   optional uci_stat_item_t ri = 1;
+   optional uci_stat_item_t cqi = 2;
+}
+
+
+message t_uci_stats {
+   required uint32 du_ue_index = 1;
+   
+   required uint32 sr_detected = 2;
+
+   optional uci_uint64_stats_item time_advance_offset = 3;
+
+   required uci_harq_stats_item harq = 4;
+
+   optional csi_stats_item csi = 5;
+}
+
+message uci_stats {
+   required uint64 timestamp = 1;
+   repeated t_uci_stats stats = 2;
+}
+
+
+
+

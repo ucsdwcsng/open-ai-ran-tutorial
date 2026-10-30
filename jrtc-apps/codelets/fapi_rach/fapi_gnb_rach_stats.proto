@@ -1,0 +1,22 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
+syntax = "proto2";
+
+message t_ta_hist {
+    required uint32 ta = 1;
+    required uint32 cnt = 2;
+}
+
+message t_pwr_hist {
+    required int32 pwr = 1;
+    required uint32 cnt = 2;
+}
+
+
+message rach_stats {
+    required uint64 timestamp = 1;
+    repeated t_ta_hist l1_rach_ta_hist = 2;
+    repeated t_pwr_hist l1_rach_pwr_hist = 3;
+}
+

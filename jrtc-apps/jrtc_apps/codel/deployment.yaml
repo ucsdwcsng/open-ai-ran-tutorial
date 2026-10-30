@@ -1,0 +1,9 @@
+name: codel
+jbpf:
+  device:
+    - id: 1
+      host: srs-gnb-du1-proxy.ran.svc.cluster.local
+      port: 30450
+  codelet_set:
+    - device: 1
+      config: ${JBPF_CODELETS}/codel/codel.yaml

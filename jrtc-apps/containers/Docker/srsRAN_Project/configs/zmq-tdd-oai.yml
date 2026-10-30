@@ -1,0 +1,81 @@
+# srsRAN gNB (this jbpf fork) configured for TDD band n78, 20 MHz, 30 kHz SCS,
+# over ZMQ, to interoperate with the Duranta OAI nr-UE (OCUDU oaiue tutorial).
+# Based on configs/gnb_rf_b200_tdd_n78_20mhz.yml (correct n78 defaults) + our
+# ZMQ/PLMN(99970)/Open5GS/cu_up/jbpf wiring + the OAI-interop bits (CSI-RS,
+# PUCCH CSI resource, explicit TDD pattern).
+#
+# ZMQ point-to-point for ONE UE:  gNB tx=4556 -> UE rx=4556 ; UE tx=4557 -> gNB rx=4557.
+# (For multiple UEs, front this with a GNU Radio broker like the srsUE setup.)
+
+ru_sdr:
+  device_driver: zmq
+  device_args: tx_port=tcp://127.0.0.1:4556,rx_port=tcp://127.0.0.1:4557,base_srate=23.04e6
+  srate: 23.04
+  tx_gain: 75
+  rx_gain: 75
+
+cell_cfg:
+  dl_arfcn: 632628                  # n78, 3.5 GHz
+  band: 78
+  channel_bandwidth_MHz: 20
+  common_scs: 30
+  plmn: "99970"
+  tac: 1
+  pci: 1
+  tdd_ul_dl_cfg:
+    dl_ul_tx_period: 5
+    nof_dl_slots: 3
+    nof_dl_symbols: 10
+    nof_ul_slots: 1
+    nof_ul_symbols: 2
+  # NOTE: csi.csi_rs_enabled / pucch.nof_cell_csi_res (OCUDU OAI-interop keys) are
+  # NOT supported by this older jbpf srsRAN fork -> INI parse error. Omitted for now;
+  # if OAI-UE fails on CSI/UCI-on-PUSCH we'll need the OCUDU gNB (which adds them).
+
+cu_cp:
+  inactivity_timer: 7200
+  amf:
+    addr: open5gs-amf-ngap.open5gs.svc.cluster.local
+    port: 38412
+    bind_addr: 0.0.0.0
+    supported_tracking_areas:
+      - tac: 1
+        plmn_list:
+          - plmn: "99970"
+            tai_slice_support_list:
+              - sst: 1
+
+cu_up:
+  upf:
+    bind_addr: 10.42.0.91           # gNB pod IP (N3/GTP-U); update on pod recreate
+
+jbpf:
+  jbpf_run_path: "/tmp"
+  jbpf_namespace: "jbpf"
+  jbpf_enable_ipc: 1
+  jbpf_standalone_io_out_ip: "127.0.0.1"
+  jbpf_standalone_io_out_port: 20788
+  jbpf_standalone_io_in_port: 30400
+  jbpf_standalone_io_policy: 0
+  jbpf_standalone_io_priority: 0
+  jbpf_io_mem_size_mb: 1024
+  jbpf_ipc_mem_name: "jrt_controller"
+  jbpf_enable_lcm_ipc: 1
+  jbpf_lcm_ipc_name: "jbpf_lcm_ipc"
+  jbpf_agent_cpu: 0
+  jbpf_agent_policy: 1
+  jbpf_agent_priority: 30
+  jbpf_maint_cpu: 0
+  jbpf_maint_policy: 0
+  jbpf_maint_priority: 0
+
+log:
+  filename: /tmp/gnb.log
+  all_level: info
+  hex_max_size: 0
+
+pcap:
+  mac_enable: false
+  mac_filename: /tmp/gnb_mac.pcap
+  ngap_enable: false
+  ngap_filename: /tmp/gnb_ngap.pcap

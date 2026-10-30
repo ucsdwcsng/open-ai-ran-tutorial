@@ -1,0 +1,37 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
+syntax = "proto2";
+
+message t_ul_stats_item {
+   required uint32 count = 1;
+   required uint64 total = 2;
+   required uint32 min = 3;
+   required uint32 max = 4;
+}
+
+message t_ul_traffic_stats_item {
+   required uint32 count = 1;
+   required uint64 total = 2;
+}
+
+message t_ul_stats {
+   required uint32 cu_ue_index = 1;
+   required uint32 is_srb = 2;
+   required uint32 rb_id = 3;
+   required uint32 rlc_mode = 4;
+   required t_ul_traffic_stats_item sdu_delivered_bytes = 5;
+   required t_ul_traffic_stats_item rx_data_pdu_bytes = 6;
+   required t_ul_traffic_stats_item rx_control_pdu_bytes = 7;
+   required t_ul_stats_item pdu_window_pkts = 8;
+   required t_ul_stats_item pdu_window_bytes = 9;
+}
+
+message ul_stats {
+   required uint64 timestamp = 1;
+   repeated t_ul_stats stats = 2;
+}
+
+
+
+
